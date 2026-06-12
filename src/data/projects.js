@@ -1,0 +1,95 @@
+export const projects = [
+  {
+    id: 'aperture',
+    index: '01',
+    name: 'Aperture House',
+    type: 'Private Residence',
+    location: 'Byron Bay, NSW',
+    year: '2022',
+    area: '420 m²',
+    blurb:
+      'A house organised around a single shaft of light that travels across every room through the day.',
+    accent: '#C9B896',
+    image: '/assets/projects/aperture.png',
+  },
+  {
+    id: 'vessel',
+    index: '02',
+    name: 'The Vessel',
+    type: 'Cultural · Museum',
+    location: 'Singapore',
+    year: '2024',
+    area: '12,500 m²',
+    blurb:
+      'A concrete vessel that holds a community art collection and the silence around it.',
+    accent: '#9DA3A0',
+    image: '/assets/projects/vessel.png',
+  },
+  {
+    id: 'solis',
+    index: '03',
+    name: 'Solis Pavilion',
+    type: 'Hospitality · Resort',
+    location: 'Daintree, QLD',
+    year: '2024',
+    area: '6,800 m²',
+    blurb:
+      'Twelve timber pavilions that disappear into the treeline and reappear at dusk as lanterns.',
+    accent: '#C2A878',
+    image: '/assets/projects/solis.png',
+  },
+  {
+    id: 'halcyon',
+    index: '04',
+    name: 'Halcyon House',
+    type: 'Private Residence',
+    location: 'Noosa, QLD',
+    year: '2021',
+    area: '510 m²',
+    blurb:
+      'A courtyard house that turns its back to the street and opens every room to a private cove.',
+    accent: '#B0876A',
+    image: '/assets/projects/halcyon.png',
+  },
+  {
+    id: 'strata',
+    index: '05',
+    name: 'Strata Gallery',
+    type: 'Cultural · Gallery',
+    location: 'Sydney, NSW',
+    year: '2025',
+    area: '4,200 m²',
+    blurb:
+      'Three sandstone volumes stacked like the harbour cliffs they were quarried from.',
+    accent: '#7E8B94',
+    image: '/assets/projects/strata.png',
+  },
+  {
+    id: 'anvil',
+    index: '06',
+    name: 'The Anvil',
+    type: 'Adaptive Reuse · Workspace',
+    location: 'Fremantle, WA',
+    year: '2022',
+    area: '9,400 m²',
+    blurb:
+      'A century-old foundry kept raw, its crane rails now carrying light instead of steel.',
+    accent: '#A3704F',
+    image: '/assets/projects/anvil.png',
+  },
+  {
+    // the closer — this is the tower standing behind the gallery, and the
+    // one Act V slices open. The portfolio hands off into the live model.
+    id: 'meridian-tower',
+    index: '07',
+    name: 'Meridian Residences',
+    type: 'Residential · Luxury Apartments',
+    location: 'Melbourne, VIC',
+    year: '2023',
+    area: '38,000 m²',
+    blurb:
+      'The tower rising beside you now — 24 storeys of stacked garden terraces in central Melbourne. Step inside.',
+    accent: '#A8946C',
+    image: '/assets/projects/meridian-tower.png',
+  },
+]

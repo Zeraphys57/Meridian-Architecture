@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bone: #F4F1EA;
+  --concrete: #C9C4B8;
+  --graphite: #1C1B19;
+  --ink: #2C2A26;
+  --sand: #C9B896;
+  --sand-deep: #A8946C;
+  --line: rgba(28, 27, 25, 0.12);
+  --line-light: rgba(244, 241, 234, 0.15);
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --ease-arch: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-inout: cubic-bezier(0.83, 0, 0.17, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bone);
+  color: var(--graphite);
+  font-family: var(--font-body);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sand) transparent;
+}
+
+body {
+  overflow-x: hidden;
+  background: var(--bone);
+  color: var(--graphite);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.cursor-hidden,
+body.cursor-hidden a,
+body.cursor-hidden button {
+  cursor: none;
+}
+
+::selection {
+  background: var(--sand);
+  color: var(--graphite);
+}
+
+.act {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--sand-deep);
+}
+[data-theme='dark'] .eyebrow,
+[data-theme='warm'] .eyebrow {
+  color: var(--sand);
+}
+
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* clip-reveal wrapper for headline lines */
+.line-mask {
+  display: block;
+  overflow: hidden;
+}
+.line-mask > span {
+  display: block;
+  will-change: transform;
+}
+
+/* film grain overlay */
+.grain {
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grain {
+    animation: grain-shift 0.9s steps(4) infinite;
+  }
+}
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2%, 1%); }
+  50% { transform: translate(1%, -2%); }
+  75% { transform: translate(-1%, 2%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* custom cursor */
+.cursor-cross,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+.cursor-cross {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.35s var(--ease-arch);
+}
+.cursor-cross::before,
+.cursor-cross::after {
+  content: '';
+  position: absolute;
+  background: var(--bone);
+}
+.cursor-cross::before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+.cursor-cross::after {
+  top: 50%;
+  left: 0;
+  height: 1px;
+  width: 100%;
+}
+.cursor-ring {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(244, 241, 234, 0.7);
+  border-radius: 50%;
+  transition: width 0.35s var(--ease-arch), height 0.35s var(--ease-arch);
+}
+body[data-cursor='hover'] .cursor-ring {
+  width: 48px;
+  height: 48px;
+}
+body[data-cursor='hover'] .cursor-cross {
+  transform: rotate(45deg);
+}
+
+.w-em {
+  color: var(--sand);
+  font-weight: 500;
+}
+
+/* hairline dividers */
+.hairline { background: var(--line); }
+[data-theme='dark'] .hairline,
+[data-theme='warm'] .hairline { background: var(--line-light); }
+
+/* drawn SVG paths start hidden until GSAP measures them */
+.draw-svg path,
+.draw-svg line,
+.draw-svg circle,
+.draw-svg rect,
+.draw-svg polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* scroll hint line */
+.scroll-hint-line {
+  width: 1px;
+  height: 48px;
+  position: relative;
+  overflow: hidden;
+  background: var(--line);
+}
+.scroll-hint-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--graphite);
+  animation: hint-draw 2.2s var(--ease-inout) infinite;
+}
+@keyframes hint-draw {
+  0% { transform: translateY(-100%); }
+  55% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ghost act numeral — enormous, barely there, drifting on scroll */
+.ghost-numeral {
+  position: absolute;
+  top: 8%;
+  right: 2vw;
+  font-size: 30vw;
+  line-height: 1;
+  font-weight: 300;
+  opacity: 0.045;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+/* gallery hover choreography */
+.img-frame img,
+.img-frame svg {
+  transition: transform 0.9s var(--ease-arch);
+}
+.panel:hover .img-frame img,
+.panel:hover .img-frame svg {
+  transform: scale(1.05);
+}
+
+/* hairline underline sweep on links */
+.link-sweep {
+  position: relative;
+}
+.link-sweep::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.5s var(--ease-arch);
+}
+.link-sweep:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+/* closing marquee */
+.marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.marquee-track {
+  display: inline-flex;
+  will-change: transform;
+  animation: marquee-roll 30s linear infinite;
+}
+@keyframes marquee-roll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
