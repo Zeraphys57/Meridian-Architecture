@@ -15,7 +15,7 @@ const clamp01 = (x) => Math.min(1, Math.max(0, x))
 
 // How present the WebGL layer is per act — the scene must yield the stage
 // in the HTML-led acts (gallery, materials, the founder's quote).
-const ACT_DIM = { 1: 1, 2: 1, 3: 1, 4: 0.35, 5: 1, 6: 0.12, 7: 0.6, 8: 1, 9: 0.28, 10: 1 }
+const ACT_DIM = { 1: 1, 2: 1, 3: 1, 4: 0.35, 5: 1, 6: 0.12, 7: 0.38, 8: 1, 9: 0.28, 10: 1 }
 
 // Maps the single global scroll progress (0-1) onto camera, building,
 // ground and light state. Scroll forward = build up, back = tear down.

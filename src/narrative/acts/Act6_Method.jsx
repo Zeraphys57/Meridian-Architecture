@@ -10,64 +10,135 @@ import GhostNumeral from '../../components/GhostNumeral'
 // shattered mid-animation). Dashed guides carry class="dash" — they fade
 // in instead of dash-drawing, which would destroy their dash pattern.
 const DRAWINGS = {
-  '01': ( // Brief — site plan: boundary, footprint, north arrow
-    <svg viewBox="0 0 420 300" className="draw-svg w-full">
-      <path d="M50 50 L370 50 L370 250 L50 250 Z" />
-      <path d="M130 110 L270 110 L270 200 L130 200 Z" />
-      <path d="M130 110 L160 90 L300 90 L270 110" />
-      <path className="dash" d="M200 200 L200 250" strokeDasharray="4 5" />
-      <circle cx="332" cy="84" r="16" />
-      <path d="M332 96 L332 72" />
-      <path d="M326 82 L332 72 L338 82" />
+  '01': ( // Brief — site plan: boundary, setbacks, footprint, context, north
+    <svg viewBox="0 0 440 300" className="draw-svg w-full">
+      {/* overall dimension line */}
+      <path d="M44 22 L396 22" />
+      <path d="M44 17 L44 27" />
+      <path d="M396 17 L396 27" />
+      {/* property boundary */}
+      <path d="M44 42 L396 42 L396 258 L44 258 Z" />
+      {/* building setback */}
+      <path className="dash" d="M78 74 L362 74 L362 226 L78 226 Z" strokeDasharray="6 5" />
+      {/* podium + tower footprint */}
+      <path d="M166 104 L274 104 L274 196 L166 196 Z" />
+      <path d="M188 124 L252 124 L252 176 L188 176 Z" />
+      {/* footprint poché hatch */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <path key={`h${i}`} d={`M188 ${130 + i * 11} L252 ${124 + i * 11}`} />
+      ))}
+      {/* entry path to the street */}
+      <path d="M220 196 L220 242" />
+      <path d="M210 242 L230 242" />
+      {/* street + centre line */}
+      <path d="M44 242 L396 242" />
+      <path className="dash" d="M44 250 L396 250" strokeDasharray="10 8" />
+      {/* specimen trees at the corners */}
+      {[[98, 96], [342, 96], [98, 204], [342, 204]].map(([x, y], i) => (
+        <circle key={`t${i}`} cx={x} cy={y} r="9" />
+      ))}
+      {/* north arrow */}
+      <circle cx="374" cy="64" r="13" />
+      <path d="M374 75 L374 51" />
+      <path d="M369 60 L374 51 L379 60" />
     </svg>
   ),
-  '02': ( // Sketch — two-volume elevation study
-    <svg viewBox="0 0 420 300" className="draw-svg w-full">
-      <path d="M40 250 L390 250" />
-      <path d="M90 250 L90 90 L230 90 L230 250" />
-      <path d="M230 250 L230 150 L340 150 L340 250" />
-      <path d="M120 120 L200 120" />
-      <path d="M120 155 L200 155" />
-      <path d="M120 190 L200 190" />
-      <path d="M120 220 L200 220" />
-      <path d="M255 180 L315 180" />
-      <path d="M255 212 L315 212" />
-      <path d="M90 90 L110 70 L250 70 L230 90" />
-      <path d="M65 250 L65 90" />
-      <path d="M58 90 L72 90" />
+  '02': ( // Sketch — tower elevation: floors, mullions, entrance, datum
+    <svg viewBox="0 0 440 300" className="draw-svg w-full">
+      {/* ground datum */}
+      <path d="M34 268 L406 268" />
+      {/* tower envelope with two setbacks */}
+      <path d="M158 268 L158 64 L282 64 L282 268" />
+      <path d="M172 64 L172 46 L268 46 L268 64" />
+      <path d="M186 46 L186 32 L254 32 L254 46" />
+      {/* floor lines */}
+      {Array.from({ length: 11 }, (_, i) => (
+        <path key={`f${i}`} d={`M158 ${82 + i * 17} L282 ${82 + i * 17}`} />
+      ))}
+      {/* vertical mullions */}
+      {[190, 220, 250].map((x) => (
+        <path key={`m${x}`} d={`M${x} 64 L${x} 268`} />
+      ))}
+      {/* entrance portal */}
+      <path d="M204 268 L204 248 L236 248 L236 268" />
+      {/* rooftop pergola */}
+      <path d="M194 32 L194 22 L246 22 L246 32" />
+      {/* height dimension line */}
+      <path d="M300 64 L300 268" />
+      <path d="M294 64 L306 64" />
+      <path d="M294 268 L306 268" />
+      {/* figure for scale */}
+      <path d="M322 268 L322 256" />
+      <circle cx="322" cy="252" r="3.4" />
     </svg>
   ),
-  '03': ( // Model — axonometric massing study
-    <svg viewBox="0 0 420 300" className="draw-svg w-full">
-      <path d="M110 240 L210 280 L310 235 L210 196 Z" />
-      <path d="M110 240 L110 120 L210 158 L210 280" />
-      <path d="M310 235 L310 118 L210 158" />
-      <path d="M110 120 L210 80 L310 118" />
-      <path d="M210 80 L210 158" />
-      <path d="M140 135 L140 230" />
-      <path d="M170 147 L170 243" />
-      <path d="M240 172 L240 262" />
-      <path d="M275 158 L275 248" />
-      <path className="dash" d="M80 268 L340 268" strokeDasharray="3 5" />
+  '03': ( // Model — axonometric massing: stacked plates with setbacks
+    <svg viewBox="0 0 440 300" className="draw-svg w-full">
+      {/* ground shadow */}
+      <path className="dash" d="M96 256 L300 256" strokeDasharray="4 6" />
+      {/* podium */}
+      <path d="M120 214 L218 252 L324 210 L226 172 Z" />
+      <path d="M120 214 L120 226 L218 264 L218 252" />
+      <path d="M324 210 L324 222 L218 264" />
+      {/* stacked floor plates rising with a slight setback */}
+      {Array.from({ length: 8 }, (_, i) => {
+        const y = 172 - i * 18
+        const inset = i * 1.5
+        return (
+          <path
+            key={`p${i}`}
+            d={`M${132 + inset} ${y} L${218} ${y + 34} L${312 - inset} ${y - 4} L${226} ${y - 38} Z`}
+          />
+        )
+      })}
+      {/* leading vertical edges */}
+      <path d="M132 172 L132 40" />
+      <path d="M226 134 L226 4" />
+      <path d="M312 168 L312 36" />
+      <path d="M218 206 L218 76" />
     </svg>
   ),
-  '04': ( // Build — section: floors, core, dimension line
-    <svg viewBox="0 0 420 300" className="draw-svg w-full">
-      <path d="M40 265 L390 265" />
-      <path d="M100 265 L100 60 L320 60 L320 265" />
-      <path d="M100 110 L320 110" />
-      <path d="M100 160 L320 160" />
-      <path d="M100 212 L320 212" />
-      <path className="dash" d="M195 265 L195 60" strokeDasharray="2 5" />
-      <path className="dash" d="M225 265 L225 60" strokeDasharray="2 5" />
-      <path d="M348 60 L348 265" />
-      <path d="M341 60 L355 60" />
-      <path d="M341 265 L355 265" />
-      <path d="M100 42 L320 42" />
-      <path d="M100 35 L100 49" />
-      <path d="M320 35 L320 49" />
+  '04': ( // Build — section: slabs, core, foundation, levels, dimensions
+    <svg viewBox="0 0 440 300" className="draw-svg w-full">
+      {/* ground line */}
+      <path d="M34 250 L406 250" />
+      {/* foundation box + hatch */}
+      <path d="M150 250 L150 282 L290 282 L290 250" />
+      {[0, 1, 2].map((i) => (
+        <path key={`fh${i}`} d={`M${162 + i * 44} 250 L${150 + i * 44} 282`} />
+      ))}
+      {/* tower section envelope */}
+      <path d="M150 250 L150 40 L290 40 L290 250" />
+      {/* floor slabs */}
+      {Array.from({ length: 10 }, (_, i) => (
+        <path key={`sl${i}`} d={`M150 ${60 + i * 19} L290 ${60 + i * 19}`} />
+      ))}
+      {/* central core with poché */}
+      <path d="M202 40 L202 250" />
+      <path d="M238 40 L238 250" />
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <path className="dash" key={`c${i}`} d={`M202 ${64 + i * 32} L238 ${48 + i * 32}`} strokeDasharray="2 4" />
+      ))}
+      {/* rooftop amenity */}
+      <path d="M166 40 L166 28 L274 28 L274 40" />
+      {/* level ticks on the right */}
+      {Array.from({ length: 6 }, (_, i) => (
+        <path key={`lv${i}`} d={`M290 ${60 + i * 38} L302 ${60 + i * 38}`} />
+      ))}
+      {/* overall height dimension */}
+      <path d="M320 40 L320 250" />
+      <path d="M314 40 L326 40" />
+      <path d="M314 250 L326 250" />
     </svg>
   ),
+}
+
+// drawing-sheet title-block metadata per phase
+const SHEET = {
+  '01': { no: 'A-001', kind: 'SITE PLAN', scale: '1:500' },
+  '02': { no: 'A-201', kind: 'ELEVATION', scale: '1:200' },
+  '03': { no: 'A-301', kind: 'AXONOMETRIC', scale: 'N.T.S.' },
+  '04': { no: 'A-401', kind: 'SECTION', scale: '1:100' },
 }
 
 export default function Act6_Method() {
@@ -76,51 +147,27 @@ export default function Act6_Method() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // each drawing drafts itself stroke by stroke as its row enters;
-      // dashed guides fade in afterwards (dash-drawing them would
-      // overwrite their dash pattern)
+      // The ink is always rendered (no stroke-dash hiding, which kept leaving
+      // the sheets blank). We only animate a gentle entrance of the sheet and
+      // info; immediateRender:false means even that can never hide the drawing.
+      if (reducedMotion) return
       ref.current.querySelectorAll('.phase-row').forEach((row) => {
-        const all = row.querySelectorAll('path, circle')
-        const solid = []
-        const dashed = []
-        all.forEach((p) => (p.classList.contains('dash') ? dashed : solid).push(p))
-        solid.forEach((p) => {
-          const len = p.getTotalLength ? p.getTotalLength() : 600
-          p.style.strokeDasharray = `${len}`
-          p.style.strokeDashoffset = reducedMotion ? '0' : `${len}`
+        gsap.from(row.querySelector('.drawing-sheet'), {
+          opacity: 0,
+          y: 30,
+          duration: 1,
+          ease: 'power3.out',
+          immediateRender: false,
+          scrollTrigger: { trigger: row, start: 'top 80%', toggleActions: 'play none none none' },
         })
-        if (reducedMotion) return
-        // SCRUBBED drafting — the golden rule applies to ink too. At any
-        // scroll position the drawing is in a deterministic state; scroll
-        // back and it un-drafts.
-        gsap.to(solid, {
-          strokeDashoffset: 0,
-          stagger: 0.05,
-          ease: 'none',
-          scrollTrigger: { trigger: row, start: 'top 88%', end: 'top 38%', scrub: true },
+        gsap.from(row.querySelector('.phase-info'), {
+          opacity: 0,
+          y: 36,
+          duration: 0.9,
+          ease: 'power3.out',
+          immediateRender: false,
+          scrollTrigger: { trigger: row, start: 'top 78%', toggleActions: 'play none none none' },
         })
-        if (dashed.length)
-          gsap.fromTo(
-            dashed,
-            { opacity: 0 },
-            {
-              opacity: 1,
-              stagger: 0.1,
-              ease: 'none',
-              scrollTrigger: { trigger: row, start: 'top 48%', end: 'top 30%', scrub: true },
-            }
-          )
-        gsap.fromTo(
-          row.querySelector('.phase-info'),
-          { opacity: 0, y: 36 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.9,
-            ease: 'power3.out',
-            scrollTrigger: { trigger: row, start: 'top 70%' },
-          }
-        )
       })
       // timeline spine fills with sand as you scroll through
       if (!reducedMotion) {
@@ -180,8 +227,19 @@ export default function Act6_Method() {
                   {ph.desc}
                 </p>
               </div>
-              <div className="md:w-[60%]" style={{ color: 'var(--ink)' }}>
-                {DRAWINGS[ph.n]}
+              <div className="md:w-[58%]">
+                <div className="drawing-sheet">
+                  <span className="sheet-corner tl" />
+                  <span className="sheet-corner tr" />
+                  <span className="sheet-corner bl" />
+                  <span className="sheet-corner br" />
+                  <div style={{ color: 'var(--ink)' }}>{DRAWINGS[ph.n]}</div>
+                  <div className="drawing-titleblock">
+                    <span>MERIDIAN — {SHEET[ph.n].kind}</span>
+                    <span className="tb-mid">{SHEET[ph.n].scale}</span>
+                    <span className="tb-no">{SHEET[ph.n].no}</span>
+                  </div>
+                </div>
               </div>
             </div>
           ))}

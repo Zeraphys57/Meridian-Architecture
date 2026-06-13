@@ -68,6 +68,9 @@ const GroundPlane = forwardRef(function GroundPlane(_, ref) {
     []
   )
 
+  // The horizon "line the building begins as": densest at the survey datum,
+  // dissolving symmetrically into the void at both ends instead of a hard,
+  // uniform rule running edge to edge.
   const horizonGeo = useMemo(() => {
     const g = new THREE.BufferGeometry()
     g.setAttribute(
@@ -78,10 +81,32 @@ const GroundPlane = forwardRef(function GroundPlane(_, ref) {
   }, [])
   const horizonMat = useMemo(
     () =>
-      new THREE.LineBasicMaterial({
-        color: '#1C1B19',
+      new THREE.ShaderMaterial({
         transparent: true,
-        opacity: 0.65,
+        depthWrite: false,
+        uniforms: {
+          uColor: { value: new THREE.Color('#1C1B19') },
+          uOpacity: { value: 0.65 },
+        },
+        vertexShader: /* glsl */ `
+          varying float vX;
+          void main() {
+            vX = position.x;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          varying float vX;
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          void main() {
+            // solid through the datum, feathering away toward the edges
+            float fade = 1.0 - smoothstep(16.0, 74.0, abs(vX));
+            float a = fade * uOpacity;
+            if (a < 0.003) discard;
+            gl_FragColor = vec4(uColor, a);
+          }
+        `,
       }),
     []
   )
@@ -92,12 +117,12 @@ const GroundPlane = forwardRef(function GroundPlane(_, ref) {
       if (gridRef.current) gridRef.current.visible = gridMat.uniforms.uOpacity.value > 0.004
     },
     setHorizonOpacity(o) {
-      horizonMat.opacity = THREE.MathUtils.clamp(o, 0, 1) * 0.65
+      horizonMat.uniforms.uOpacity.value = THREE.MathUtils.clamp(o, 0, 1) * 0.65
     },
     setColors(gridColor, horizonColor, dt) {
       const t = Math.min(1, dt * 4)
       gridMat.uniforms.uColor.value.lerp(tmpA.set(gridColor), t)
-      horizonMat.color.lerp(tmpB.set(horizonColor), t)
+      horizonMat.uniforms.uColor.value.lerp(tmpB.set(horizonColor), t)
     },
   }))
 
