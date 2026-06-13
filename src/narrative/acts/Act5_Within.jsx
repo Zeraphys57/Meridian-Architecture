@@ -77,8 +77,8 @@ export default function Act5_Within() {
     <section ref={ref} className="act" data-act="5" style={{ minHeight: '220vh' }}>
       <GhostNumeral numeral="V" />
       <div className="sticky top-0 h-screen w-full overflow-hidden">
-        {/* left — the idea */}
-        <div className="within-head absolute left-6 md:left-16 top-1/2 -translate-y-1/2 max-w-[420px]">
+        {/* left — the idea (top on mobile, centered-left on desktop) */}
+        <div className="within-head scene-scrim absolute left-6 right-6 md:right-auto md:left-16 top-24 md:top-1/2 md:-translate-y-1/2 max-w-[420px]">
           <p className="eyebrow mb-6">02 — WITHIN</p>
           <h2 className="font-display" style={{ fontSize: 'clamp(36px, 4.5vw, 64px)', fontWeight: 500, lineHeight: 1.08, letterSpacing: '-0.03em' }}>
             Step inside the line.
@@ -113,8 +113,8 @@ export default function Act5_Within() {
           </div>
         </div>
 
-        {/* right — level readout riding the ascent */}
-        <div className="absolute right-6 md:right-16 top-1/2 -translate-y-1/2 text-right">
+        {/* right — level readout riding the ascent (bottom on mobile) */}
+        <div className="absolute right-6 md:right-16 bottom-12 md:bottom-auto md:top-1/2 md:-translate-y-1/2 text-right">
           <div className="mono-label mb-2" style={{ opacity: 0.5 }}>
             LEVEL
           </div>

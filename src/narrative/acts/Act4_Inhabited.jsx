@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from '../../lib/gsap'
 import { useNarrative } from '../NarrativeProvider'
-import { localProgress } from '../actRanges'
 import { projects } from '../../data/projects'
 import Magnetic from '../../components/Magnetic'
 
@@ -99,18 +98,27 @@ function ProjectPanel({ project, refCb, vertical = false }) {
 // Vertical scroll → horizontal travel. Sticky viewport, track translated by
 // the act's local progress (same source of truth as the 3D scene).
 export default function Act4_Inhabited() {
+  const sectionRef = useRef()
   const trackRef = useRef()
   const panelsRef = useRef([])
-  const { progressRef, isMobile, reducedMotion } = useNarrative()
+  const { isMobile, reducedMotion } = useNarrative()
   const horizontal = !isMobile && !reducedMotion
 
   useEffect(() => {
     if (!horizontal) return
     const track = trackRef.current
+    const section = sectionRef.current
     const tick = () => {
-      const l = localProgress(progressRef.current, 4)
+      // Drive the horizontal travel off the section's *pinned* scroll range
+      // (top-of-section enters → sticky releases) rather than localProgress,
+      // which is viewport-center based and lags the pin by half a viewport.
+      // That lag made the intro slide in already-offset and the last panel
+      // still be mid-travel as the act unpinned. This keeps both ends framed.
+      const pinTop = section.getBoundingClientRect().top + window.scrollY
+      const pinDist = section.offsetHeight - window.innerHeight
+      const p = pinDist > 0 ? gsap.utils.clamp(0, 1, (window.scrollY - pinTop) / pinDist) : 0
       const dist = Math.max(0, track.scrollWidth - window.innerWidth)
-      const x = -l * dist
+      const x = -p * dist
       track.style.transform = `translate3d(${x}px, 0, 0)`
       // parallax: image, index number and text drift at different rates
       for (const panel of panelsRef.current) {
@@ -127,7 +135,7 @@ export default function Act4_Inhabited() {
     }
     gsap.ticker.add(tick)
     return () => gsap.ticker.remove(tick)
-  }, [horizontal, progressRef])
+  }, [horizontal])
 
   const intro = (
     <div className="flex h-full md:h-screen w-screen md:w-[60vw] flex-shrink-0 flex-col justify-center px-6 md:px-16 py-24 md:py-0">
@@ -136,7 +144,7 @@ export default function Act4_Inhabited() {
         Selected Works
       </h2>
       <p className="font-display mt-4" style={{ fontSize: 'clamp(17px, 1.6vw, 22px)', opacity: 0.55 }}>
-        Four buildings. Four ways of holding light.
+        Seven buildings. Seven ways of holding light.
       </p>
       {horizontal && (
         <p className="font-mono mt-10" style={{ fontSize: 11, letterSpacing: '0.25em', opacity: 0.45 }}>
@@ -159,7 +167,7 @@ export default function Act4_Inhabited() {
   }
 
   return (
-    <section className="act" data-act="4" style={{ minHeight: '340vh' }}>
+    <section ref={sectionRef} className="act" data-act="4" style={{ minHeight: '340vh' }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <div ref={trackRef} className="flex h-full" style={{ width: 'max-content', willChange: 'transform' }}>
           {intro}

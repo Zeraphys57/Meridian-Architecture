@@ -65,11 +65,19 @@ export default function Scene() {
         <directionalLight position={[-18, 14, -16]} intensity={0.35} color="#D8E4EC" />
         <hemisphereLight args={['#F4F1EA', '#8A8478', 0.3]} />
 
-        {/* local studio environment — soft key/fill/top, no HDR fetch */}
-        <Environment resolution={256} frames={1}>
-          <Lightformer form="rect" intensity={2.4} color="#FFF4E2" position={[10, 14, 8]} scale={[14, 18, 1]} target={[0, 8, 0]} />
-          <Lightformer form="rect" intensity={0.9} color="#DCE4E6" position={[-14, 8, -6]} scale={[16, 14, 1]} target={[0, 8, 0]} />
-          <Lightformer form="rect" intensity={1.1} color="#F4F1EA" position={[0, 24, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[20, 20, 1]} />
+        {/* local studio environment — soft key/fill/top + a structured skyline
+            so the curtain wall, brass and marble reflect something believable,
+            no HDR fetch */}
+        <Environment resolution={512} frames={1}>
+          <Lightformer form="rect" intensity={2.6} color="#FFF4E2" position={[10, 14, 8]} scale={[14, 18, 1]} target={[0, 8, 0]} />
+          <Lightformer form="rect" intensity={1.0} color="#DCE4E6" position={[-14, 8, -6]} scale={[16, 14, 1]} target={[0, 8, 0]} />
+          <Lightformer form="rect" intensity={1.15} color="#F4F1EA" position={[0, 24, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[20, 20, 1]} />
+          {/* warm horizon band — a low sun line drags across the glass */}
+          <Lightformer form="ring" intensity={1.5} color="#FFE6C4" position={[0, 5, -22]} scale={[44, 2.2, 1]} target={[0, 9, 0]} />
+          {/* slim bright panels — crisp vertical glints, like distant towers */}
+          <Lightformer form="rect" intensity={2.3} color="#FFFFFF" position={[18, 17, -3]} scale={[1.3, 9, 1]} target={[0, 11, 0]} />
+          <Lightformer form="rect" intensity={1.9} color="#EAF1F5" position={[-12, 21, 9]} scale={[1.1, 8, 1]} target={[0, 11, 0]} />
+          <Lightformer form="rect" intensity={1.6} color="#FFF1DC" position={[6, 3, 18]} scale={[10, 1.0, 1]} target={[0, 6, 0]} />
         </Environment>
 
         <GroundPlane ref={groundRef} />

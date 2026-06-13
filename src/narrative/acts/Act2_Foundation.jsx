@@ -67,25 +67,27 @@ export default function Act2_Foundation() {
       <GhostNumeral numeral="II" />
       <div className="flex min-h-[120vh] items-center justify-center px-6">
         <div className="max-w-[900px] py-[20vh]">
-          <p className="eyebrow mb-8">01 — THE FOUNDATION</p>
-          <h2
-            className="statement font-display"
-            style={{
-              fontSize: 'clamp(32px, 4.5vw, 68px)',
-              fontWeight: 400,
-              lineHeight: 1.25,
-            }}
-          >
-            <Words text={STATEMENT} highlight={['years']} highlightClass="w-years" />
-          </h2>
-          <p
-            className="foundation-sub mt-10"
-            style={{ fontSize: 16, lineHeight: 1.7, maxWidth: 480, opacity: 0.6 }}
-          >
-            A building is finished in three years and lived in for sixty. We treat
-            architecture as the slowest of the arts — a frame for decades of mornings,
-            arguments, dinners, and quiet. The foundation is never just concrete.
-          </p>
+          <div className="scene-scrim">
+            <p className="eyebrow mb-8">01 — THE FOUNDATION</p>
+            <h2
+              className="statement font-display"
+              style={{
+                fontSize: 'clamp(32px, 4.5vw, 68px)',
+                fontWeight: 400,
+                lineHeight: 1.25,
+              }}
+            >
+              <Words text={STATEMENT} highlight={['years']} highlightClass="w-years" />
+            </h2>
+            <p
+              className="foundation-sub mt-10"
+              style={{ fontSize: 16, lineHeight: 1.7, maxWidth: 480, opacity: 0.6 }}
+            >
+              A building is finished in three years and lived in for sixty. We treat
+              architecture as the slowest of the arts — a frame for decades of mornings,
+              arguments, dinners, and quiet. The foundation is never just concrete.
+            </p>
+          </div>
         </div>
       </div>
     </section>

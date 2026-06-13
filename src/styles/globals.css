@@ -12,8 +12,8 @@
   --line: rgba(28, 27, 25, 0.12);
   --line-light: rgba(244, 241, 234, 0.15);
 
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Manrope', sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', sans-serif;
+  --font-body: 'Manrope Variable', 'Manrope', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
   --ease-arch: cubic-bezier(0.22, 1, 0.36, 1);
@@ -259,6 +259,125 @@ a {
 .link-sweep:hover::after {
   transform: scaleX(1);
   transform-origin: left center;
+}
+
+/* fixed-nav scrim — keeps the logo/menu legible over any act passing beneath,
+   and softens content scrolling under the bar. Theme-aware; fades with the nav. */
+.nav-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 104px;
+  z-index: 40;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(244, 241, 234, 0.92) 0%,
+    rgba(244, 241, 234, 0.6) 40%,
+    rgba(244, 241, 234, 0) 100%
+  );
+}
+[data-theme='dark'] .nav-scrim {
+  background: linear-gradient(
+    to bottom,
+    rgba(28, 27, 25, 0.92) 0%,
+    rgba(28, 27, 25, 0.6) 40%,
+    rgba(28, 27, 25, 0) 100%
+  );
+}
+[data-theme='warm'] .nav-scrim {
+  background: linear-gradient(
+    to bottom,
+    rgba(42, 37, 32, 0.92) 0%,
+    rgba(42, 37, 32, 0.6) 40%,
+    rgba(42, 37, 32, 0) 100%
+  );
+}
+
+/* legibility scrim behind copy layered over the 3D scene — small screens only,
+   where text and the building stack into the same space. */
+@media (max-width: 767px) {
+  .scene-scrim {
+    background: radial-gradient(
+      130% 80% at 50% 50%,
+      rgba(28, 27, 25, 0.74) 0%,
+      rgba(28, 27, 25, 0.58) 55%,
+      rgba(28, 27, 25, 0) 100%
+    );
+    border-radius: 14px;
+    padding: 1.25rem 1.1rem;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  [data-theme='light'] .scene-scrim {
+    background: radial-gradient(
+      130% 80% at 50% 50%,
+      rgba(244, 241, 234, 0.8) 0%,
+      rgba(244, 241, 234, 0.62) 55%,
+      rgba(244, 241, 234, 0) 100%
+    );
+  }
+}
+
+/* mobile hamburger */
+.nav-burger {
+  width: 26px;
+  height: 16px;
+  position: relative;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+.nav-burger span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform 0.4s var(--ease-arch), opacity 0.3s;
+}
+.nav-burger span:nth-child(1) { top: 3px; }
+.nav-burger span:nth-child(2) { bottom: 3px; }
+.nav-burger.open span:nth-child(1) { top: 50%; transform: translateY(-50%) rotate(45deg); }
+.nav-burger.open span:nth-child(2) { top: 50%; bottom: auto; transform: translateY(-50%) rotate(-45deg); }
+
+/* mobile full-screen menu */
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 1.5rem;
+  background: var(--graphite);
+  color: var(--bone);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: opacity 0.5s var(--ease-arch), transform 0.5s var(--ease-arch),
+    visibility 0.5s;
+}
+.mobile-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.mobile-menu .mm-item {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.5s var(--ease-arch), transform 0.5s var(--ease-arch);
+}
+.mobile-menu.open .mm-item { opacity: 1; transform: none; }
+.mobile-menu.open .mm-item:nth-child(1) { transition-delay: 0.08s; }
+.mobile-menu.open .mm-item:nth-child(2) { transition-delay: 0.14s; }
+.mobile-menu.open .mm-item:nth-child(3) { transition-delay: 0.2s; }
+.mobile-menu.open .mm-item:nth-child(4) { transition-delay: 0.28s; }
+@media (min-width: 768px) {
+  .mobile-menu,
+  .nav-burger { display: none !important; }
 }
 
 /* closing marquee */

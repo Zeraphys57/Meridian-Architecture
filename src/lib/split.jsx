@@ -31,10 +31,28 @@ export function Lines({ lines }) {
 }
 
 // Chars: per-character spans — for coordinate readouts and letter-warp.
+// Letters are grouped per word in a nowrap wrapper so a line can only break at
+// spaces, never mid-word (otherwise "ground." can wrap to "gro / und."). Each
+// character stays an individually-transformable .ch for the warp/reveal effects.
 export function Chars({ text, className = 'ch' }) {
-  return [...text].map((c, i) => (
-    <span key={i} className={className} style={{ display: 'inline-block', whiteSpace: 'pre' }}>
-      {c}
-    </span>
-  ))
+  let charKey = 0
+  return text.split(/(\s+)/).map((token, ti) => {
+    if (token === '') return null
+    if (/^\s+$/.test(token)) {
+      return (
+        <span key={`s${ti}`} style={{ whiteSpace: 'pre-wrap' }}>
+          {token}
+        </span>
+      )
+    }
+    return (
+      <span key={`w${ti}`} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+        {[...token].map((c) => (
+          <span key={charKey++} className={className} style={{ display: 'inline-block', whiteSpace: 'pre' }}>
+            {c}
+          </span>
+        ))}
+      </span>
+    )
+  })
 }

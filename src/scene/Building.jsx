@@ -15,6 +15,7 @@ const TRAY_W = 6.9 // ~2.6m cantilever past the glass line, not a pancake
 const TRAY_R = 0.92 // rounded tray corners — the luxury-residential signature
 const GLASS_HALF = 2.5
 const RAIL_H = 0.4
+const CAR_SCALE = 1.9 // cars read at proper size next to ~0.6u-tall people
 
 const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3)
 // overshoot-and-settle for the balcony lock-in (scrub-safe: pure function of x)
@@ -165,17 +166,28 @@ function glassStreakTexture() {
   return tex
 }
 
-// subtle asphalt speckle (multiplies the road color)
+// asphalt: aggregate speckle + worn tonal patches (multiplies the road color)
 function asphaltTexture() {
-  const S = 128
+  const S = 256
   const c = document.createElement('canvas')
   c.width = c.height = S
   const ctx = c.getContext('2d')
   ctx.fillStyle = '#FFFFFF'
   ctx.fillRect(0, 0, S, S)
   const rnd = mulberry32(7)
-  for (let i = 0; i < 420; i++) {
-    ctx.fillStyle = `rgba(0,0,0,${0.04 + rnd() * 0.09})`
+  // soft tonal blotches — patched repairs + sun-worn lanes
+  for (let i = 0; i < 26; i++) {
+    const r = 14 + rnd() * 40
+    const g = ctx.createRadialGradient(rnd() * S, rnd() * S, 0, rnd() * S, rnd() * S, r)
+    const dark = rnd() > 0.5
+    g.addColorStop(0, dark ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, S, S)
+  }
+  // fine aggregate grit
+  for (let i = 0; i < 1400; i++) {
+    ctx.fillStyle = rnd() > 0.5 ? `rgba(0,0,0,${0.05 + rnd() * 0.1})` : `rgba(255,255,255,${0.04 + rnd() * 0.06})`
     ctx.beginPath()
     ctx.arc(rnd() * S, rnd() * S, 0.5 + rnd() * 1.6, 0, Math.PI * 2)
     ctx.fill()
@@ -209,6 +221,27 @@ function paverTexture(rx, ry) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.repeat.set(rx, ry)
   return tex
+}
+
+// manicured lawn — alternating mow stripes + a fine grass speckle
+function lawnTexture() {
+  const S = 256
+  const c = document.createElement('canvas')
+  c.width = c.height = S
+  const x = c.getContext('2d')
+  for (let i = 0; i < 8; i++) {
+    x.fillStyle = i % 2 ? '#7C9A60' : '#6E8C54'
+    x.fillRect(0, (i * S) / 8, S, S / 8)
+  }
+  const rnd = mulberry32(91)
+  for (let i = 0; i < 1500; i++) {
+    x.fillStyle = `rgba(${rnd() > 0.5 ? '120,150,80' : '40,70,30'},${0.04 + rnd() * 0.07})`
+    x.fillRect(rnd() * S, rnd() * S, 2, 2)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(7, 7)
+  return t
 }
 
 // oak planks: staggered boards with joints and faint grain
@@ -272,39 +305,58 @@ function rugTexture() {
   return new THREE.CanvasTexture(c)
 }
 
-// three small abstract canvases — actual paintings, not paint chips
-function artTexture(variant) {
+// a set of gallery-quality abstract canvases in the luxe palette — each
+// distinct, so no two apartments hang the same art
+function artTexture(v) {
+  const W = 96
+  const H = 72
   const c = document.createElement('canvas')
-  c.width = 64
-  c.height = 48
-  const ctx = c.getContext('2d')
-  if (variant === 0) {
-    ctx.fillStyle = '#E8E0CF'
-    ctx.fillRect(0, 0, 64, 48)
-    ctx.fillStyle = '#A33E2C'
-    ctx.fillRect(6, 8, 28, 32)
-    ctx.fillStyle = '#46525C'
-    ctx.fillRect(38, 16, 18, 24)
-  } else if (variant === 1) {
-    ctx.fillStyle = '#DDD8C9'
-    ctx.fillRect(0, 0, 64, 48)
-    ctx.strokeStyle = '#5F6B4D'
-    ctx.lineWidth = 4
-    ctx.beginPath()
-    ctx.arc(32, 50, 28, Math.PI, Math.PI * 2)
-    ctx.stroke()
-    ctx.fillStyle = '#C9A87C'
-    ctx.beginPath()
-    ctx.arc(44, 14, 7, 0, Math.PI * 2)
-    ctx.fill()
-  } else {
-    ctx.fillStyle = '#CFC9BA'
-    ctx.fillRect(0, 0, 64, 48)
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = i % 2 ? '#46525C' : '#9C5F45'
-      ctx.fillRect(8 + i * 10, 6 + (i % 2) * 4, 5, 34)
-    }
+  c.width = W
+  c.height = H
+  const x = c.getContext('2d')
+  const grounds = ['#EDE7DA', '#E7E1D3', '#F1EDE3', '#E3DED1']
+  x.fillStyle = grounds[v % 4]
+  x.fillRect(0, 0, W, H)
+  const P = {
+    emerald: '#2E5043', sapphire: '#2A3C54', bordeaux: '#6E3B42', teal: '#27545A',
+    rose: '#A07C84', sage: '#5F6B5A', champagne: '#C2A878', charcoal: '#2C2A26', terra: '#AE6A48',
   }
+  const arc = (cx, cy, r, fill) => { x.fillStyle = fill; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill() }
+  switch (v % 8) {
+    case 0: // colour-block diptych
+      x.fillStyle = P.bordeaux; x.fillRect(10, 12, 34, 48)
+      x.fillStyle = P.sapphire; x.fillRect(52, 20, 30, 40)
+      break
+    case 1: // sage arch + champagne moon
+      x.strokeStyle = P.sage; x.lineWidth = 7; x.beginPath(); x.arc(W / 2, H + 6, 40, Math.PI, 2 * Math.PI); x.stroke()
+      arc(66, 20, 9, P.champagne)
+      break
+    case 2: // jewel verticals
+      ;[P.emerald, P.terra, P.sapphire, P.champagne, P.bordeaux].forEach((col, i) => {
+        x.fillStyle = col; x.fillRect(12 + i * 16, 10 + (i % 2) * 6, 9, 50)
+      })
+      break
+    case 3: // eclipse
+      arc(W / 2, H / 2, 27, P.emerald)
+      arc(W / 2 - 9, H / 2 - 9, 11, grounds[(v + 1) % 4])
+      break
+    case 4: // teal / rose split
+      x.fillStyle = P.teal; x.fillRect(8, 10, 38, 52)
+      x.fillStyle = P.rose; x.fillRect(50, 10, 38, 52)
+      break
+    case 5: // minimal horizon
+      x.fillStyle = P.sapphire; x.fillRect(0, H * 0.56, W, 6)
+      arc(72, H * 0.38, 8, P.champagne)
+      break
+    case 6: // bordeaux field, champagne frame line
+      x.fillStyle = P.bordeaux; x.fillRect(12, 10, 72, 52)
+      x.strokeStyle = P.champagne; x.lineWidth = 2; x.strokeRect(22, 18, 52, 36)
+      break
+    default: // organic forms
+      x.fillStyle = P.sage; x.beginPath(); x.ellipse(W / 2, H / 2, 30, 18, 0.4, 0, 7); x.fill()
+      x.fillStyle = P.terra; x.beginPath(); x.ellipse(W / 2 + 12, H / 2 + 2, 12, 8, 0.4, 0, 7); x.fill()
+  }
+  x.strokeStyle = 'rgba(40,38,34,0.22)'; x.lineWidth = 2; x.strokeRect(2, 2, W - 4, H - 4)
   return new THREE.CanvasTexture(c)
 }
 
@@ -321,6 +373,151 @@ function sparkTexture() {
   ctx.fillStyle = g
   ctx.fillRect(0, 0, S, S)
   return new THREE.CanvasTexture(c)
+}
+
+// Build a tangent-space normal map from a procedural height field. `draw`
+// paints grayscale height (mid-grey = flat, lighter = raised); a Sobel pass
+// turns slope into RGB normals so otherwise-flat surfaces catch real relief
+// under the directional sun — board-formed concrete, plaster, oak, weave.
+function normalFromHeight(draw, { size = 256, strength = 2, repeat = [1, 1], seed = 1 } = {}) {
+  const S = size
+  const c = document.createElement('canvas')
+  c.width = c.height = S
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#808080'
+  ctx.fillRect(0, 0, S, S)
+  draw(ctx, S, mulberry32(seed))
+  const src = ctx.getImageData(0, 0, S, S).data
+  const at = (x, y) => src[(((y + S) % S) * S + ((x + S) % S)) * 4] / 255
+  const out = ctx.createImageData(S, S)
+  const d = out.data
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = (at(x - 1, y) - at(x + 1, y)) * strength
+      const dy = (at(x, y - 1) - at(x, y + 1)) * strength
+      const len = Math.hypot(dx, dy, 1)
+      const i = (y * S + x) * 4
+      d[i] = ((dx / len) * 0.5 + 0.5) * 255
+      d[i + 1] = ((dy / len) * 0.5 + 0.5) * 255
+      d[i + 2] = (1 / len) * 0.5 * 255 + 127.5
+      d[i + 3] = 255
+    }
+  }
+  ctx.putImageData(out, 0, 0)
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(repeat[0], repeat[1])
+  return tex
+}
+
+// board-formed concrete: horizontal form-board seams + aggregate pitting
+function concreteNormal() {
+  return normalFromHeight(
+    (ctx, S, rnd) => {
+      ctx.strokeStyle = '#4A4A4A'
+      ctx.lineWidth = 2
+      for (let y = 0; y < S; y += S / 6) {
+        ctx.beginPath(); ctx.moveTo(0, y + (rnd() - 0.5) * 2); ctx.lineTo(S, y + (rnd() - 0.5) * 2); ctx.stroke()
+      }
+      for (let i = 0; i < 1400; i++) {
+        const v = rnd() > 0.5 ? 190 + rnd() * 50 : 55 + rnd() * 55
+        ctx.fillStyle = `rgb(${v},${v},${v})`
+        ctx.beginPath(); ctx.arc(rnd() * S, rnd() * S, 0.4 + rnd() * 1.6, 0, 7); ctx.fill()
+      }
+    },
+    { size: 256, strength: 2.2, repeat: [0.5, 0.5], seed: 19 }
+  )
+}
+
+// fine plaster stipple for interior walls
+function plasterNormal() {
+  return normalFromHeight(
+    (ctx, S, rnd) => {
+      for (let i = 0; i < 4200; i++) {
+        const v = 108 + rnd() * 44
+        ctx.fillStyle = `rgb(${v},${v},${v})`
+        ctx.fillRect(rnd() * S, rnd() * S, 1.4, 1.4)
+      }
+    },
+    { size: 256, strength: 1.1, repeat: [3, 3], seed: 5 }
+  )
+}
+
+// oak plank relief — board seams (deep) + along-grain ticks (shallow)
+function plankNormal() {
+  return normalFromHeight(
+    (ctx, S, rnd) => {
+      const row = 32
+      for (let y = 0; y < S; y += row) {
+        ctx.strokeStyle = '#3A3A3A'; ctx.lineWidth = 2.5
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(S, y); ctx.stroke()
+        const jx = ((y / row) % 2 ? 0.33 : 0.71) * S
+        ctx.beginPath(); ctx.moveTo(jx, y); ctx.lineTo(jx, y + row); ctx.stroke()
+        ctx.strokeStyle = 'rgba(150,150,150,0.5)'; ctx.lineWidth = 1
+        for (let g = 0; g < 4; g++) {
+          const gy = y + 5 + rnd() * (row - 8)
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(S, gy + (rnd() - 0.5) * 5); ctx.stroke()
+        }
+      }
+    },
+    { size: 256, strength: 1.6, repeat: [1.5, 3], seed: 37 }
+  )
+}
+
+// stone/marble bevel — grooved joints matching the paver grid
+function tileNormal(rx, ry) {
+  return normalFromHeight(
+    (ctx, S) => {
+      ctx.strokeStyle = '#3A3A3A'; ctx.lineWidth = 4
+      for (let i = 0; i <= 4; i++) {
+        const k = (i * S) / 4
+        ctx.beginPath(); ctx.moveTo(0, k); ctx.lineTo(S, k); ctx.moveTo(k, 0); ctx.lineTo(k, S); ctx.stroke()
+      }
+    },
+    { size: 128, strength: 1.3, repeat: [rx, ry], seed: 3 }
+  )
+}
+
+// bouclé weave bump for upholstery
+function weaveNormal() {
+  return normalFromHeight(
+    (ctx, S, rnd) => {
+      for (let i = 0; i < 700; i++) {
+        const v = 150 + rnd() * 80
+        ctx.fillStyle = `rgb(${v},${v},${v})`
+        ctx.beginPath(); ctx.arc(rnd() * S, rnd() * S, 1 + rnd() * 1.4, 0, 7); ctx.fill()
+      }
+    },
+    { size: 64, strength: 1.1, repeat: [1, 1], seed: 47 }
+  )
+}
+
+// coarse asphalt aggregate — dense pitted grain
+function asphaltNormal() {
+  return normalFromHeight(
+    (ctx, S, rnd) => {
+      for (let i = 0; i < 2600; i++) {
+        const v = rnd() > 0.5 ? 175 + rnd() * 60 : 60 + rnd() * 55
+        ctx.fillStyle = `rgb(${v},${v},${v})`
+        ctx.beginPath(); ctx.arc(rnd() * S, rnd() * S, 0.5 + rnd() * 1.5, 0, 7); ctx.fill()
+      }
+    },
+    { size: 256, strength: 1.6, repeat: [4, 4], seed: 13 }
+  )
+}
+
+// mown turf — soft directional tufts following the mow stripes
+function grassNormal() {
+  return normalFromHeight(
+    (ctx, S, rnd) => {
+      for (let i = 0; i < 2200; i++) {
+        const v = 120 + rnd() * 70
+        ctx.fillStyle = `rgb(${v},${v},${v})`
+        ctx.fillRect(rnd() * S, rnd() * S, 1.2, 2.4 + rnd() * 1.5) // tall = blades
+      }
+    },
+    { size: 128, strength: 0.9, repeat: [7, 7], seed: 23 }
+  )
 }
 
 // the facade ripple — every tray subtly unique (Aqua Tower language).
@@ -421,6 +618,44 @@ const Building = forwardRef(function Building(_, ref) {
       foundation: new THREE.BoxGeometry(FOOTPRINT + 1.2, 4, FOOTPRINT + 1.2),
       podium: new THREE.BoxGeometry(TRAY_W + 1.8, 0.12, TRAY_W + 1.8),
       podiumLower: new THREE.BoxGeometry(TRAY_W + 4.4, 0.1, TRAY_W + 4.4),
+      // landscaped grounds — fills the gap between the plinth and the road
+      lawnPlate: (() => {
+        const g = new THREE.ShapeGeometry(roundedRectShape(24, 4.5), 16)
+        g.rotateX(-Math.PI / 2)
+        return g
+      })(),
+      groundsWalk: (() => {
+        // a paved promenade ring looping around the building
+        const o = roundedRectShape(19, 4.6)
+        o.holes.push(new THREE.Path(roundedRectShape(16.6, 3.9).getPoints(44).reverse()))
+        const g = new THREE.ShapeGeometry(o, 20)
+        g.rotateX(-Math.PI / 2)
+        return g
+      })(),
+      groundsPath: new THREE.BoxGeometry(1.8, 0.015, 6.6), // radial walk to the road
+      forecourt: (() => {
+        const g = new THREE.ShapeGeometry(roundedRectShape(7.6, 1.3), 12)
+        g.rotateX(-Math.PI / 2)
+        return g
+      })(),
+      // a low clipped-boxwood hedge ring framing the whole garden
+      edgeHedge: (() => {
+        const o = roundedRectShape(22.2, 4.2)
+        o.holes.push(new THREE.Path(roundedRectShape(21.4, 4.0).getPoints(48).reverse()))
+        const g = new THREE.ExtrudeGeometry(o, { depth: 0.32, bevelEnabled: false, curveSegments: 18 })
+        g.rotateX(-Math.PI / 2)
+        return g
+      })(),
+      steppingStone: new THREE.CylinderGeometry(0.33, 0.33, 0.04, 18),
+      entryStep: new THREE.BoxGeometry(4.6, 0.12, 0.5), // a tread of the grand entry stair
+      // painted road edge lines (rendered as thin flat rings, scaled in/out)
+      laneLine: (() => {
+        const o = roundedRectShape(24.8, 3.05)
+        o.holes.push(new THREE.Path(roundedRectShape(24.5, 3.0).getPoints(48).reverse()))
+        const g = new THREE.ShapeGeometry(o, 28)
+        g.rotateX(-Math.PI / 2)
+        return g
+      })(),
       trunk: new THREE.CylinderGeometry(0.05, 0.09, 1, 6),
       canopy: new THREE.IcosahedronGeometry(1, 0), // faceted — model-shop tree
       hedge: (() => {
@@ -514,6 +749,20 @@ const Building = forwardRef(function Building(_, ref) {
       // balcony fit-out
       lounger: new RoundedBoxGeometry(0.36, 0.07, 0.16, 2, 0.025),
       tableTop: new THREE.CylinderGeometry(0.07, 0.06, 0.09, 10),
+      // interior fit-out detail
+      book: new RoundedBoxGeometry(0.026, 0.13, 0.085, 1, 0.006),
+      shelfBoard: new THREE.BoxGeometry(0.66, 0.018, 0.2),
+      shelfBack: new THREE.BoxGeometry(0.7, 0.96, 0.04),
+      counterTop: (() => {
+        const b = new RoundedBoxGeometry(0.86, 0.05, 0.46, 2, 0.02)
+        b.translate(0, 0.3, 0)
+        return b
+      })(),
+      globe: new THREE.SphereGeometry(0.05, 16, 16),
+      frameSm: new THREE.BoxGeometry(0.3, 0.4, 0.03),
+      frameWide: new THREE.BoxGeometry(0.46, 0.3, 0.03),
+      trayDeco: new RoundedBoxGeometry(0.26, 0.018, 0.16, 1, 0.008),
+      bottle: new THREE.CylinderGeometry(0.018, 0.022, 0.13, 8),
       // frosted privacy fins dividing each floor into apartments — merged
       // into one mesh per floor (4 fins at the face midpoints)
       fins: (() => {
@@ -729,6 +978,8 @@ const Building = forwardRef(function Building(_, ref) {
           color: '#DDD6C8',
           map: tex,
           roughnessMap: tex, // speckle modulates the sheen too
+          normalMap: concreteNormal(), // board-formed relief on every slab edge
+          normalScale: new THREE.Vector2(0.45, 0.45),
           roughness: 0.6,
           metalness: 0.06,
           envMapIntensity: 0.85,
@@ -855,6 +1106,8 @@ const Building = forwardRef(function Building(_, ref) {
     const m = base.concrete.clone()
     m.map = paverTexture(7, 7) // the plinth reads as a paved terrace
     m.roughnessMap = null
+    m.normalMap = tileNormal(7, 7) // joints recessed to match the pavers
+    m.normalScale = new THREE.Vector2(0.3, 0.3)
     m.opacity = 0
     return m
   }, [base])
@@ -874,22 +1127,25 @@ const Building = forwardRef(function Building(_, ref) {
     const rnd = mulberry32(71)
     return Array.from({ length: FLOOR_COUNT }, () => 0.965 + rnd() * 0.06)
   }, [])
-  // balcony decor: loungers + side tables on some terraces, cascading
-  // greenery on others — the stacked-garden-terraces idea made literal
+  // balcony decor: a few sun-loungers on scattered terraces. (No planters —
+  // the facade reads as clean architecture, not a vertical garden.)
   const decor = useMemo(() => {
     const rnd = mulberry32(53)
     const byFloor = {}
-    for (let n = 0; n < 14; n++) {
-      const f = 1 + Math.floor(rnd() * 20)
+    const floors = new Set()
+    for (let n = 0; n < 8; n++) {
+      let f
+      do { f = 1 + Math.floor(rnd() * 22) } while (floors.has(f)) // one per floor, max
+      floors.add(f)
       const a = rnd() * Math.PI * 2
-      const r = 2.55 + rnd() * 0.4
+      const r = 2.55 + rnd() * 0.35
       ;(byFloor[f] = byFloor[f] || []).push({
-        type: rnd() < 0.5 ? 'lounge' : 'garden',
+        type: 'lounge',
         x: Math.cos(a) * r,
         z: Math.sin(a) * r,
         rot: -a,
-        m: rnd() > 0.5 ? 0 : 1,
-        s: 0.9 + rnd() * 0.4,
+        m: Math.floor(rnd() * 3),
+        s: 0.95 + rnd() * 0.25,
       })
     }
     return byFloor
@@ -927,8 +1183,8 @@ const Building = forwardRef(function Building(_, ref) {
 
   // residents on a scatter of balconies — people (and their pets) at the
   // railing, placed on one of the four faces, mostly looking out
-  const figMats = useMemo(() => {
-    // bouclé weave — clothes and upholstery share the same soft grain
+  // bouclé weave — clothes and upholstery share the same soft grain
+  const weaveTex = useMemo(() => {
     const S = 64
     const cv = document.createElement('canvas')
     cv.width = cv.height = S
@@ -942,10 +1198,47 @@ const Building = forwardRef(function Building(_, ref) {
     }
     const weave = new THREE.CanvasTexture(cv)
     weave.wrapS = weave.wrapT = THREE.RepeatWrapping
-    return ['#2C2A26', '#B7A380', '#8C6A52', '#EDE8DC'].map(
-      (c) => new THREE.MeshStandardMaterial({ color: c, map: weave, roughness: 0.85 })
-    )
+    return weave
   }, [])
+  // matching bump so the weave catches light instead of reading as flat paint
+  const weaveNrm = useMemo(() => weaveNormal(), [])
+  // neutral upholstery / clothing — charcoal, champagne, sage, ivory (no brown)
+  const figMats = useMemo(
+    () =>
+      ['#2C2A26', '#C2A878', '#6E7B6A', '#EDE8DC'].map(
+        (c) =>
+          new THREE.MeshStandardMaterial({
+            color: c,
+            map: weaveTex,
+            normalMap: weaveNrm,
+            normalScale: new THREE.Vector2(0.3, 0.3),
+            roughness: 0.78,
+            envMapIntensity: 0.5,
+          })
+      ),
+    [weaveTex, weaveNrm]
+  )
+  // per-room signature velvet — each unit type gets one couture hero colour,
+  // so every floor of the open section reads as its own art-directed room:
+  // [0 bed rose · 1 living emerald · 2 dining sapphire · 3 retail bordeaux ·
+  //  4 workspace sage · 5 club teal]. Sheen gives the soft velvet edge-light.
+  const signatureMats = useMemo(() => {
+    const white = new THREE.Color('#FFFFFF')
+    return ['#A07C84', '#2E5043', '#2A3C54', '#6E3B42', '#5F6B5A', '#27545A'].map((c) => {
+      const base = new THREE.Color(c)
+      return new THREE.MeshPhysicalMaterial({
+        color: base,
+        map: weaveTex,
+        normalMap: weaveNrm,
+        normalScale: new THREE.Vector2(0.4, 0.4),
+        roughness: 0.62,
+        sheen: 1,
+        sheenColor: base.clone().lerp(white, 0.45),
+        sheenRoughness: 0.45,
+        envMapIntensity: 0.5,
+      })
+    })
+  }, [weaveTex, weaveNrm])
   const skinMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#D9B48F', roughness: 0.75 }),
     []
@@ -1034,6 +1327,39 @@ const Building = forwardRef(function Building(_, ref) {
     }),
     []
   )
+  // vivid-but-tasteful seasonal flower colours for the parterre beds
+  const flowerMats = useMemo(
+    () =>
+      ['#C8505A', '#E0903A', '#B179A8', '#E7D7A2'].map(
+        (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.78, flatShading: true })
+      ),
+    []
+  )
+  // landscaped grounds — manicured lawn + warm stone walks (scale in at handover)
+  const lawnMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#6E8C54',
+        map: lawnTexture(),
+        normalMap: grassNormal(), // soft turf tufts, not a flat green sheet
+        normalScale: new THREE.Vector2(0.4, 0.4),
+        roughness: 0.96,
+        envMapIntensity: 0.18,
+      }),
+    []
+  )
+  const pathStoneMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#D9D1BF',
+        map: paverTexture(5, 5),
+        normalMap: tileNormal(5, 5), // recessed paver joints
+        normalScale: new THREE.Vector2(0.4, 0.4),
+        roughness: 0.82,
+        envMapIntensity: 0.3,
+      }),
+    []
+  )
 
   // organic canopy blobs: jittered icosahedra (welded so faces stay sealed)
   // — three shared variants so no two crowns read identical
@@ -1071,6 +1397,121 @@ const Building = forwardRef(function Building(_, ref) {
     </>
   )
 
+  // a row of mixed-colour book spines standing on a shelf (origin at shelf top)
+  const renderBooks = (seed, count = 9, span = 0.58) => {
+    const rnd = mulberry32(seed)
+    return Array.from({ length: count }, (_, i) => {
+      const h = 0.78 + rnd() * 0.5
+      const lean = rnd() > 0.86 ? 0.3 : 0
+      const x = count > 1 ? -span / 2 + (i / (count - 1)) * span : 0
+      return (
+        <mesh
+          key={i}
+          geometry={geo.book}
+          material={bookMats[Math.floor(rnd() * 9)]}
+          position={[x, 0.065 * h, lean ? 0.01 : 0]}
+          rotation={[0, 0, lean]}
+          scale={[1, h, 1]}
+        />
+      )
+    })
+  }
+
+  // a full-height library unit — back panel, three stocked shelves, objets
+  const renderBookcase = () => (
+    <>
+      <mesh geometry={geo.shelfBack} material={woodMat} position={[0, 0.5, -0.11]} />
+      {[0.14, 0.43, 0.72].map((y, s) => (
+        <group key={s} position={[0, y, 0]}>
+          <mesh geometry={geo.shelfBoard} material={woodMat} />
+          {renderBooks(s * 13 + 5, 9, 0.58)}
+        </group>
+      ))}
+      <mesh geometry={geo.pot} material={benchMat} position={[0.25, 0.45, 0]} scale={[0.95, 1.05, 0.95]} />
+      <mesh geometry={geo.globe} material={mirrorMat} position={[-0.24, 0.75, 0]} scale={0.7} />
+    </>
+  )
+
+  // a sculptural pendant — cord, brass shell, warm glowing core
+  const renderPendant = (drop = 0.42) => (
+    <>
+      <mesh geometry={geo.cable} material={woodMat} position={[0, 1.02 - drop / 2, 0]} scale={[1, drop / 0.26, 1]} />
+      <mesh geometry={geo.globe} material={benchMat} position={[0, 1.02 - drop, 0]} />
+      <mesh geometry={geo.globe} material={lampGlowMat} position={[0, 1.02 - drop, 0]} scale={0.7} />
+    </>
+  )
+
+  // a gallery wall composed uniquely per unit — the layout and every artwork
+  // are picked from the room's own seed, so no two floors hang the same wall
+  const renderGallery = (seed) => {
+    const rnd = mulberry32(seed * 23 + 7)
+    const n = artMats.length
+    const used = []
+    const pick = () => {
+      let a
+      do { a = Math.floor(rnd() * n) } while (used.includes(a) && used.length < n)
+      used.push(a)
+      return artMats[a]
+    }
+    const layout = Math.floor(rnd() * 4)
+    if (layout === 0) {
+      // statement hero + two companions, asymmetric
+      return (
+        <>
+          <mesh geometry={geo.artPanel} material={pick()} position={[-0.06, 0.64, 0]} />
+          <mesh geometry={geo.frameSm} material={pick()} position={[0.5, 0.76, 0]} />
+          <mesh geometry={geo.frameWide} material={pick()} position={[0.46, 0.4, 0]} />
+        </>
+      )
+    }
+    if (layout === 1) {
+      // salon hang — a 2×2 cluster of small frames
+      return (
+        <>
+          <mesh geometry={geo.frameSm} material={pick()} position={[-0.29, 0.79, 0]} />
+          <mesh geometry={geo.frameWide} material={pick()} position={[0.3, 0.81, 0]} />
+          <mesh geometry={geo.frameWide} material={pick()} position={[-0.31, 0.46, 0]} />
+          <mesh geometry={geo.frameSm} material={pick()} position={[0.31, 0.44, 0]} />
+        </>
+      )
+    }
+    if (layout === 2) {
+      // a single oversized statement piece, offset
+      return <mesh geometry={geo.artPanel} material={pick()} position={[0.02, 0.66, 0]} scale={[1.2, 1.3, 1]} />
+    }
+    // horizontal triptych
+    return (
+      <>
+        <mesh geometry={geo.frameSm} material={pick()} position={[-0.46, 0.64, 0]} />
+        <mesh geometry={geo.frameSm} material={pick()} position={[0, 0.64, 0]} />
+        <mesh geometry={geo.frameSm} material={pick()} position={[0.46, 0.64, 0]} />
+      </>
+    )
+  }
+
+  // a floor-standing planter — pot, slender trunk, layered crown
+  const renderTallPlant = (k) => (
+    <>
+      <mesh geometry={geo.pot} material={woodMat} scale={[1.7, 2.0, 1.7]} />
+      <mesh geometry={geo.trunk} material={gardenMats.trunk} scale={[0.5, 0.55, 0.5]} position={[0, 0.3, 0]} />
+      <mesh geometry={blobGeos[k % 3]} material={gardenMats.foliage[k % 4]} position={[0, 0.54, 0]} scale={[0.23, 0.31, 0.23]} />
+      <mesh geometry={blobGeos[(k + 1) % 3]} material={gardenMats.foliage[(k + 2) % 4]} position={[0.11, 0.45, 0.06]} scale={0.15} />
+      <mesh geometry={blobGeos[(k + 2) % 3]} material={gardenMats.foliage[(k + 1) % 4]} position={[-0.1, 0.5, -0.05]} scale={0.13} />
+    </>
+  )
+
+  // a full specimen tree for the grounds — trunk + a rounded clustered crown
+  const renderGroundTree = (seed, h = 1.7, cs = 0.85) => (
+    <>
+      <mesh geometry={geo.trunk} material={gardenMats.trunk} scale={[1, h, 1]} position={[0, h / 2, 0]} castShadow />
+      <group position={[0, h, 0]}>
+        <mesh geometry={blobGeos[seed % 3]} material={gardenMats.foliage[seed % 4]} position={[0, 0.05, 0]} scale={[cs, cs * 0.85, cs]} castShadow />
+        <mesh geometry={blobGeos[(seed + 1) % 3]} material={gardenMats.foliage[(seed + 2) % 4]} position={[cs * 0.5, -0.1, cs * 0.3]} scale={cs * 0.62} />
+        <mesh geometry={blobGeos[(seed + 2) % 3]} material={gardenMats.foliage[(seed + 1) % 4]} position={[-cs * 0.45, -0.06, -cs * 0.3]} scale={cs * 0.55} />
+      </group>
+    </>
+  )
+
   const plantsRef = useRef([])
   const { treeData, hedgeData, plantStarts } = useMemo(() => {
     const rnd = mulberry32(7)
@@ -1105,27 +1546,34 @@ const Building = forwardRef(function Building(_, ref) {
         lz: (rnd() - 0.5) * 0.09,
       }
     }
-    const RING = 14
-    const CRANE_A = -0.37 // keep the crane's corridor clear of trees
+    // a formal allée — evenly-spaced specimen trees ringing the plinth, with
+    // the south entry approach and the crane corridor left open
+    const RING = 16
+    const R = 7.7
+    const CRANE_A = -0.37
     for (let i = 0; i < RING; i++) {
-      let a = (i / RING) * Math.PI * 2 + rnd() * 0.45
-      if (Math.abs(Math.atan2(Math.sin(a - CRANE_A), Math.cos(a - CRANE_A))) < 0.5) a += 1.0
-      const r = 5.6 + rnd() * 3.4
-      trees.push(
-        makeTree(Math.cos(a) * r, 0, Math.sin(a) * r, 1.3 + rnd() * 1.1, 0.55 + rnd() * 0.45, 0.66 + rnd() * 0.16)
-      )
+      const a = (i / RING) * Math.PI * 2 + 0.196
+      const da = Math.abs(Math.atan2(Math.sin(a - CRANE_A), Math.cos(a - CRANE_A)))
+      const south = Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2)))
+      if (da < 0.45 || south < 0.42) continue
+      trees.push(makeTree(Math.cos(a) * R, 0, Math.sin(a) * R, 1.9, 0.74, 0.66 + (i % 4) * 0.015))
     }
-    // accent trees on the plinth corners
+    // matched accent trees on the plinth corners
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      trees.push(makeTree(4.1 * sx, 0.22, 4.1 * sz, 1.0 + rnd() * 0.4, 0.42 + rnd() * 0.18, 0.7 + rnd() * 0.1))
+      trees.push(makeTree(4.1 * sx, 0.22, 4.1 * sz, 1.15, 0.5, 0.7))
     }
+    // a designed parterre: clipped-hedge ribbons framing the plinth + vivid
+    // seasonal flower beds flanking the entry and the rear corners
     const hedges = [
-      { x: 0, z: 4.2, w: 3.2, rot: false },
-      { x: 0, z: -4.2, w: 3.2, rot: false },
-      { x: 4.2, z: 0, w: 3.2, rot: true },
-      { x: -4.2, z: 0, w: 3.2, rot: true },
+      { x: 0, z: -5.0, w: 4.4, rot: false, kind: 'hedge' },
+      { x: 5.0, z: -0.6, w: 3.6, rot: true, kind: 'hedge' },
+      { x: -5.0, z: -0.6, w: 3.6, rot: true, kind: 'hedge' },
+      { x: 3.5, z: 3.8, w: 1.5, rot: false, kind: 'flower', fc: 0 },
+      { x: -3.5, z: 3.8, w: 1.5, rot: false, kind: 'flower', fc: 2 },
+      { x: 4.1, z: -3.7, w: 1.6, rot: false, kind: 'flower', fc: 1 },
+      { x: -4.1, z: -3.7, w: 1.6, rot: false, kind: 'flower', fc: 3 },
     ]
-    const starts = [...trees.map((t) => t.start), ...hedges.map((_, i) => 0.62 + i * 0.02)]
+    const starts = [...trees.map((t) => t.start), ...hedges.map((_, i) => 0.62 + i * 0.015)]
     return { treeData: trees, hedgeData: hedges, plantStarts: starts }
   }, [])
 
@@ -1151,7 +1599,11 @@ const Building = forwardRef(function Building(_, ref) {
       new THREE.MeshStandardMaterial({
         color: '#37352F',
         map: asphaltTexture(),
-        roughness: 1,
+        roughnessMap: asphaltTexture(),
+        normalMap: asphaltNormal(), // coarse aggregate catches the low sun
+        normalScale: new THREE.Vector2(0.5, 0.5),
+        roughness: 0.92,
+        metalness: 0.02,
         transparent: true,
         opacity: 0,
       }),
@@ -1220,6 +1672,7 @@ const Building = forwardRef(function Building(_, ref) {
   const pathRef = useRef()
   const amenityRef = useRef()
   const parkRef = useRef()
+  const groundsRef = useRef()
   const civRefs = useRef([])
   const lightPosts = useMemo(() => {
     const pts = roundedRectShape(24.4, 2.9).getSpacedPoints(240)
@@ -1232,32 +1685,69 @@ const Building = forwardRef(function Building(_, ref) {
   const featureCanRef = useRef()
   const rugMats = useMemo(() => {
     const tex = rugTexture()
-    return ['#9C5F45', '#7E8868', '#5E6B74', '#C2A878'].map(
+    // emerald · sage · deep slate-blue · champagne (rust retired)
+    return ['#3A5A4E', '#7E8868', '#46566A', '#C2A878'].map(
       (c) => new THREE.MeshStandardMaterial({ color: c, map: tex, roughness: 0.95 })
     )
   }, [])
+  // joinery / casegoods — smoked charcoal oak, not orange-brown timber
   const woodMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#8A6B4D', roughness: 0.6 }),
+    () => new THREE.MeshStandardMaterial({ color: '#3E3A35', roughness: 0.5, envMapIntensity: 0.4 }),
     []
   )
   const wallMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#EDE7DA', roughness: 0.9 }),
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#EDE7DA',
+        roughness: 0.9,
+        normalMap: plasterNormal(), // troweled-plaster tooth, not flat paint
+        normalScale: new THREE.Vector2(0.18, 0.18),
+      }),
     []
   )
   const artMats = useMemo(
     () =>
-      [0, 1, 2].map(
-        (i) => new THREE.MeshStandardMaterial({ map: artTexture(i), roughness: 0.85 })
-      ),
+      Array.from({ length: 8 }, (_, i) => new THREE.MeshStandardMaterial({ map: artTexture(i), roughness: 0.85 })),
     []
   )
   const lampGlowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#FFE2B0' }), [])
+  // pale limed European oak — airy, luxe, never honey-brown
   const woodFloorMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#C9A87C', map: plankTexture(), roughness: 0.6 }),
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#C8BCA8',
+        map: plankTexture(),
+        normalMap: plankNormal(), // board seams + grain you can feel
+        normalScale: new THREE.Vector2(0.5, 0.5),
+        roughness: 0.55,
+        envMapIntensity: 0.3,
+      }),
     []
   )
+  // polished marble — low roughness gives a soft reflective sheen
   const stoneFloorMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#DCD6C9', map: paverTexture(3, 6), roughness: 0.75 }),
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#E2DCD0',
+        map: paverTexture(3, 6),
+        normalMap: tileNormal(3, 6), // recessed slab joints
+        normalScale: new THREE.Vector2(0.35, 0.35),
+        roughness: 0.42,
+        envMapIntensity: 0.6,
+      }),
+    []
+  )
+  // honed white statement marble for kitchen / bar tops
+  const marbleTopMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#EFEBE3', roughness: 0.16, metalness: 0.0, envMapIntensity: 1.1 }),
+    []
+  )
+  // a spread of book-spine colours — shelves read as a real, lived-in library
+  const bookMats = useMemo(
+    () =>
+      ['#6E3B42', '#2E4A5A', '#3A5A4E', '#C2A878', '#5F6B5A', '#2C2A26', '#A07C84', '#EDE8DC', '#27545A'].map(
+        (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.72 })
+      ),
     []
   )
   const curtainMat = useMemo(
@@ -1314,6 +1804,14 @@ const Building = forwardRef(function Building(_, ref) {
       ...railMats,
       ...edgeMats,
       ...figMats,
+      ...signatureMats,
+      ...bookMats,
+      marbleTopMat,
+      // a figure's head/hair/hat must slice WITH its body, or the section
+      // plane shears the body away and leaves the head floating in mid-air
+      skinMat,
+      ...hairMats,
+      hatMat,
       ...gardenMats.foliage,
       gardenMats.trunk,
       gardenMats.hedge,
@@ -2030,6 +2528,12 @@ const Building = forwardRef(function Building(_, ref) {
         parkRef.current.visible = k > 0.002
         parkRef.current.scale.setScalar(Math.max(0.001, k))
       }
+      // the landscaped grounds lay in with the public realm (and lift on teardown)
+      if (groundsRef.current) {
+        const k = easeOutCubic(clamp((p - 0.6) / 0.1, 0, 1))
+        groundsRef.current.visible = k > 0.002
+        groundsRef.current.scale.setScalar(Math.max(0.001, k))
+      }
 
       // landscaping grows in last (and leaves first on deconstruction):
       // trunk rises first, then the canopy unfurls with a soft settle
@@ -2189,20 +2693,13 @@ const Building = forwardRef(function Building(_, ref) {
               ))}
               {/* privacy fins between apartments */}
               <mesh geometry={geo.fins} material={balMats[i]} position={[0, SLAB_T + 0.5, 0]} scale={0.001} userData={{ s: 1 }} />
-              {/* balcony fit-out: loungers, tables, terrace gardens */}
-              {(decor[i] || []).map((d, j) =>
-                d.type === 'lounge' ? (
-                  <group key={`dc${j}`} position={[d.x, SLAB_T, d.z]} rotation={[0, d.rot, 0]} scale={0.001} userData={{ s: 1 }}>
-                    <mesh geometry={geo.lounger} material={figMats[1]} position={[0, 0.045, 0]} />
-                    <mesh geometry={geo.tableTop} material={figMats[0]} position={[0.3, 0.045, 0.02]} />
-                  </group>
-                ) : (
-                  <group key={`dc${j}`} position={[d.x, SLAB_T, d.z]} scale={0.001} userData={{ s: d.s }}>
-                    <mesh geometry={blobGeos[d.m]} material={gardenMats.foliage[d.m]} position={[0, 0.13, 0]} scale={0.15} />
-                    <mesh geometry={blobGeos[(d.m + 1) % 3]} material={gardenMats.foliage[(d.m + 2) % 4]} position={[0.17, 0.09, 0.07]} scale={0.1} />
-                  </group>
-                )
-              )}
+              {/* balcony fit-out: a sun-lounger + side table on a few terraces */}
+              {(decor[i] || []).map((d, j) => (
+                <group key={`dc${j}`} position={[d.x, SLAB_T, d.z]} rotation={[0, d.rot, 0]} scale={0.001} userData={{ s: 1 }}>
+                  <mesh geometry={geo.lounger} material={figMats[1]} position={[0, 0.045, 0]} />
+                  <mesh geometry={geo.tableTop} material={figMats[0]} position={[0.3, 0.045, 0.02]} />
+                </group>
+              ))}
             </group>
             {/* structural core */}
             <mesh geometry={geo.core} material={solidMats[i]} position={[0, FLOOR_HEIGHT / 2, 0]} castShadow />
@@ -2221,15 +2718,19 @@ const Building = forwardRef(function Building(_, ref) {
       <mesh ref={roadRef} geometry={geo.road} material={roadMat} position={[0, 0.012, 0]} visible={false} />
       {carData.map((c, k) => (
         <group key={`car${k}`} ref={(el) => (carsRef.current[k] = el)} visible={false}>
-          <mesh geometry={geo.carBody} material={carMats[c.mat]} />
-          <mesh geometry={geo.carCabin} material={carCabinMat} />
-          {[[-0.1, 0.14], [0.1, 0.14], [-0.1, -0.14], [0.1, -0.14]].map(([wx, wz], wi) => (
-            <mesh key={wi} geometry={geo.wheel} material={carCabinMat} position={[wx, 0.045, wz]} />
-          ))}
-          <mesh geometry={geo.lightDot} material={headLightMat} position={[-0.06, 0.12, 0.23]} />
-          <mesh geometry={geo.lightDot} material={headLightMat} position={[0.06, 0.12, 0.23]} />
-          <mesh geometry={geo.lightDot} material={tailLightMat} position={[-0.06, 0.12, -0.23]} scale={0.8} />
-          <mesh geometry={geo.lightDot} material={tailLightMat} position={[0.06, 0.12, -0.23]} scale={0.8} />
+          {/* inner group sizes the car to scale with people (the outer group's
+              scale is driven per-frame for the appear animation) */}
+          <group scale={CAR_SCALE}>
+            <mesh geometry={geo.carBody} material={carMats[c.mat]} />
+            <mesh geometry={geo.carCabin} material={carCabinMat} />
+            {[[-0.1, 0.14], [0.1, 0.14], [-0.1, -0.14], [0.1, -0.14]].map(([wx, wz], wi) => (
+              <mesh key={wi} geometry={geo.wheel} material={carCabinMat} position={[wx, 0.045, wz]} />
+            ))}
+            <mesh geometry={geo.lightDot} material={headLightMat} position={[-0.06, 0.12, 0.23]} />
+            <mesh geometry={geo.lightDot} material={headLightMat} position={[0.06, 0.12, 0.23]} />
+            <mesh geometry={geo.lightDot} material={tailLightMat} position={[-0.06, 0.12, -0.23]} scale={0.8} />
+            <mesh geometry={geo.lightDot} material={tailLightMat} position={[0.06, 0.12, -0.23]} scale={0.8} />
+          </group>
         </group>
       ))}
 
@@ -2312,10 +2813,12 @@ const Building = forwardRef(function Building(_, ref) {
         <planeGeometry args={[17, 17]} />
       </mesh>
 
-      {/* curbs + dashed centerline framing the ring road */}
+      {/* curbs + painted edge lines + dashed centerline framing the ring road */}
       <group ref={curbRef} position={[0, 0.014, 0]} visible={false} renderOrder={2}>
         <mesh geometry={geo.curbOuter} material={curbMat} />
         <mesh geometry={geo.curbInner} material={curbMat} />
+        <mesh geometry={geo.laneLine} material={dashMat} position={[0, 0.001, 0]} />
+        <mesh geometry={geo.laneLine} material={dashMat} position={[0, 0.001, 0]} scale={[0.925, 1, 0.925]} />
         <mesh geometry={dashGeo} material={dashMat} />
       </group>
 
@@ -2401,7 +2904,7 @@ const Building = forwardRef(function Building(_, ref) {
       {/* residents' parked cars */}
       <group ref={parkRef} visible={false}>
         {[0, 1, 2].map((k) => (
-          <group key={`pc${k}`} position={[-6.9 + k * 0.62, 0, 8.9]} rotation={[0, Math.PI / 2, 0]}>
+          <group key={`pc${k}`} position={[-7.3 + k * 0.95, 0, 8.9]} rotation={[0, Math.PI / 2, 0]} scale={CAR_SCALE}>
             <mesh geometry={geo.carBody} material={carMats[(k + 1) % 4]} />
             <mesh geometry={geo.carCabin} material={carCabinMat} />
             {[[-0.1, 0.14], [0.1, 0.14], [-0.1, -0.14], [0.1, -0.14]].map(([wx, wz], wi) => (
@@ -2454,6 +2957,118 @@ const Building = forwardRef(function Building(_, ref) {
         </group>
       ))}
 
+      {/* LANDSCAPED GROUNDS — turns the bare moat between plinth and road into
+          the garden of a luxury building: manicured lawn, a stone promenade with
+          radial walks, an arrival forecourt + reflecting pool, a perimeter allée,
+          colourful beds, path lighting and people. Scales in at handover. */}
+      <group ref={groundsRef} visible={false}>
+        {/* lawn carpet just above the survey grid */}
+        <mesh geometry={geo.lawnPlate} material={lawnMat} position={[0, 0.006, 0]} receiveShadow />
+        {/* stone promenade looping the building + the south entry walk to the road */}
+        <mesh geometry={geo.groundsWalk} material={pathStoneMat} position={[0, 0.012, 0]} />
+        <mesh geometry={geo.groundsPath} material={pathStoneMat} position={[0, 0.011, 8.1]} />
+        {/* arrival forecourt — a paved plaza on the entry axis */}
+        <mesh geometry={geo.forecourt} material={pathStoneMat} position={[0, 0.013, 7.6]} />
+        {/* twin reflecting pools flanking the central walk */}
+        {[-1, 1].map((sx) => (
+          <group key={`pool${sx}`}>
+            <mesh geometry={geo.poolBorder} material={fenceMat} position={[sx * 3.9, 0.05, 8.4]} scale={[1.4, 1, 1.5]} />
+            <mesh geometry={geo.poolWater} material={poolMat} rotation={[-Math.PI / 2, 0, 0]} position={[sx * 3.9, 0.1, 8.4]} scale={[1.4, 1, 1.5]} />
+          </group>
+        ))}
+        {/* GRAND ENTRANCE — a wide stair rises from the forecourt onto the lobby
+            plinth, dead on-axis with the doors, so there's a clear way in */}
+        {[0, 1, 2, 3].map((s) => (
+          <mesh key={`est${s}`} geometry={geo.entryStep} material={pathStoneMat} position={[0, 0.205 - s * 0.05, 5.65 + s * 0.36]} castShadow receiveShadow />
+        ))}
+        {/* lit bollards lining the central walk from the street to the doors */}
+        {[7.3, 8.7, 10.1, 11.4].map((z) =>
+          [-1.7, 1.7].map((x) => (
+            <group key={`eb${x}_${z}`} position={[x, 0, z]}>
+              <mesh geometry={geo.bollard} material={lampMat} />
+              <mesh geometry={geo.lightDot} material={lampGlowMat} position={[0, 0.25, 0]} scale={0.8} />
+            </group>
+          ))
+        )}
+        {/* perimeter allée — evenly spaced specimen trees just inside the road */}
+        {Array.from({ length: 20 }, (_, i) => {
+          const a = (i / 20) * Math.PI * 2 + 0.157
+          const south = Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2)))
+          if (south < 0.32) return null // keep the entry approach open
+          const R = 9.7
+          return (
+            <group key={`gt${i}`} position={[Math.cos(a) * R, 0, Math.sin(a) * R]}>
+              {renderGroundTree(i + 1, 1.7 + (i % 3) * 0.12, 0.82)}
+            </group>
+          )
+        })}
+        {/* colourful flower + hedge beds set into the lawn quadrants */}
+        {[[6.4, 6.4, 0], [-6.4, 6.4, 2], [6.4, -6.4, 1], [-6.4, -6.4, 3], [9.4, -0.2, 0], [-9.4, -0.2, 2], [0.2, -9.6, 1]].map(
+          ([x, z, fc], i) => (
+            <group key={`gb${i}`} position={[x, 0.02, z]} rotation={[0, i * 0.5, 0]}>
+              <mesh geometry={geo.hedge} material={gardenMats.hedge} scale={[2.0, 0.4, 1.25]} />
+              <mesh geometry={geo.hedge} material={flowerMats[fc]} position={[0, 0.12, 0]} scale={[1.8, 0.32, 1.0]} />
+              {Array.from({ length: 5 }, (_, fi) => (
+                <mesh key={fi} geometry={geo.globe} material={flowerMats[(fc + fi + 1) % 4]} position={[(fi - 2) * 0.62, 0.3, (fi % 2) * 0.22 - 0.11]} scale={1.05} />
+              ))}
+            </group>
+          )
+        )}
+        {/* a clipped-boxwood hedge frames the garden — OPEN at the south entry,
+            with two topiary piers flanking the gateway so there's a way in */}
+        <mesh geometry={geo.hedge} material={gardenMats.hedge} position={[0, 0, -10]} scale={[20, 1.05, 1.4]} castShadow />
+        <mesh geometry={geo.hedge} material={gardenMats.hedge} position={[10, 0, 0]} rotation={[0, Math.PI / 2, 0]} scale={[20, 1.05, 1.4]} castShadow />
+        <mesh geometry={geo.hedge} material={gardenMats.hedge} position={[-10, 0, 0]} rotation={[0, Math.PI / 2, 0]} scale={[20, 1.05, 1.4]} castShadow />
+        <mesh geometry={geo.hedge} material={gardenMats.hedge} position={[-6.5, 0, 10]} scale={[7, 1.05, 1.4]} castShadow />
+        <mesh geometry={geo.hedge} material={gardenMats.hedge} position={[6.5, 0, 10]} scale={[7, 1.05, 1.4]} castShadow />
+        {[-3.1, 3.1].map((x) => (
+          <group key={`pier${x}`} position={[x, 0, 10]}>
+            <mesh geometry={geo.hedge} material={gardenMats.hedge} scale={[0.9, 1.9, 1.7]} castShadow />
+            <mesh geometry={geo.globe} material={gardenMats.foliage[1]} position={[0, 0.66, 0]} scale={1.7} />
+          </group>
+        ))}
+        {/* low ground-cover shrub clumps soften the lawn */}
+        {Array.from({ length: 14 }, (_, i) => {
+          const a = (i / 14) * Math.PI * 2 + 0.4
+          const R = 6.6 + (i % 4) * 1.0
+          const south = Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2)))
+          if (south < 0.5) return null
+          return (
+            <group key={`gc${i}`} position={[Math.cos(a) * R, 0.01, Math.sin(a) * R]}>
+              <mesh geometry={blobGeos[i % 3]} material={gardenMats.foliage[(i + 1) % 4]} scale={[0.42, 0.2, 0.42]} />
+              <mesh geometry={blobGeos[(i + 1) % 3]} material={gardenMats.foliage[(i + 2) % 4]} position={[0.28, -0.02, 0.16]} scale={[0.3, 0.16, 0.3]} />
+            </group>
+          )
+        })}
+        {/* stepping-stone path crossing the east lawn */}
+        {[0, 1, 2, 3, 4].map((s) => (
+          <mesh key={`ss${s}`} geometry={geo.steppingStone} material={pathStoneMat} position={[5.6 + s * 0.95, 0.02, 3.2 - s * 0.45]} />
+        ))}
+        {/* bollard path lights along the promenade */}
+        {Array.from({ length: 12 }, (_, i) => {
+          const a = (i / 12) * Math.PI * 2 + 0.26
+          const R = 8.9
+          return (
+            <group key={`gl${i}`} position={[Math.cos(a) * R, 0, Math.sin(a) * R]}>
+              <mesh geometry={geo.bollard} material={lampMat} />
+              <mesh geometry={geo.lightDot} material={lampGlowMat} position={[0, 0.25, 0]} scale={0.9} />
+            </group>
+          )
+        })}
+        {/* garden benches + residents enjoying the grounds */}
+        <group position={[4.7, 0, 6.0]} rotation={[0, -0.6, 0]}>
+          <mesh geometry={geo.benchBase} material={fenceMat} />
+          <mesh geometry={geo.bench} material={benchMat} />
+        </group>
+        <group position={[-5.3, 0, 5.2]} rotation={[0, 0.5, 0]}>
+          <mesh geometry={geo.benchBase} material={fenceMat} />
+          <mesh geometry={geo.bench} material={benchMat} />
+        </group>
+        <group position={[2.7, 0, 8.8]} rotation={[0, 2.5, 0]} scale={0.95}>{renderFigure(2, 1)}</group>
+        <group position={[-2.1, 0, 8.2]} rotation={[0, -0.8, 0]} scale={0.95}>{renderFigure(1, 3)}</group>
+        <group position={[7.2, 0, 2.0]} rotation={[0, 1.4, 0]} scale={0.95}>{renderFigure(0, 2)}</group>
+      </group>
+
       {/* podium garden — clustered-crown trees + clipped hedges */}
       <group>
         {treeData.map((t, k) => (
@@ -2499,7 +3114,24 @@ const Building = forwardRef(function Building(_, ref) {
             rotation={[0, h.rot ? Math.PI / 2 : 0, 0]}
             visible={false}
           >
-            <mesh geometry={geo.hedge} material={gardenMats.hedge} scale={[h.w, 1, 1]} />
+            {h.kind === 'flower' ? (
+              <>
+                {/* clipped green border + a vivid mass of seasonal flowers */}
+                <mesh geometry={geo.hedge} material={gardenMats.hedge} scale={[h.w, 0.42, 1.02]} />
+                <mesh geometry={geo.hedge} material={flowerMats[h.fc]} position={[0, 0.12, 0]} scale={[h.w * 0.92, 0.34, 0.84]} />
+                {Array.from({ length: 6 }, (_, fi) => (
+                  <mesh
+                    key={fi}
+                    geometry={geo.globe}
+                    material={flowerMats[(h.fc + fi + 1) % 4]}
+                    position={[((fi % 3) - 1) * h.w * 0.52, 0.3, fi < 3 ? -0.14 : 0.14]}
+                    scale={0.85}
+                  />
+                ))}
+              </>
+            ) : (
+              <mesh geometry={geo.hedge} material={gardenMats.hedge} scale={[h.w, 1, 1]} />
+            )}
           </group>
         ))}
       </group>
@@ -2536,10 +3168,15 @@ const Building = forwardRef(function Building(_, ref) {
             <mesh geometry={geo.partition} material={wallMat} position={[0.03, 0, 1.55]} />
             <mesh geometry={geo.curtain} material={curtainMat} position={[-1.14, 0, -0.95]} />
             <mesh geometry={geo.curtain} material={curtainMat} position={[-1.14, 0, 0.95]} />
-            {/* art over a credenza — the wall is furnished, not bare */}
-            <mesh geometry={geo.artPanel} material={artMats[r.art]} position={[0.1, 0.62, -1.46]} />
+            {/* gallery wall over a credenza — the wall is curated, not bare */}
+            <group position={[0.1, 0, -1.47]}>{renderGallery(r.f)}</group>
             <mesh geometry={geo.credenza} material={woodMat} position={[0.1, 0.025, -1.32]} />
             <mesh geometry={geo.stool} material={figMats[3]} position={[-0.18, 0.08, -1.32]} scale={0.45} />
+            {/* styled credenza top — stacked books in the room's signature
+                colour + a sculptural brass vessel; the curated lived-in detail */}
+            <mesh geometry={geo.stool} material={signatureMats[r.kind]} position={[0.34, 0.24, -1.33]} scale={[0.95, 0.16, 0.52]} rotation={[0, 0.1, 0]} />
+            <mesh geometry={geo.stool} material={figMats[3]} position={[0.33, 0.265, -1.33]} scale={[0.82, 0.14, 0.46]} rotation={[0, -0.16, 0]} />
+            <mesh geometry={geo.pot} material={benchMat} position={[-0.14, 0.225, -1.33]} scale={[1.15, 1.4, 1.15]} />
             <mesh geometry={geo.rug} material={rugMats[r.rug]} position={[0, 0.028, 0.1]} />
             {/* neighbouring units beyond the party walls — never empty */}
             <mesh geometry={geo.rug} material={rugMats[(r.rug + 2) % 4]} position={[-0.3, 0.028, 2.05]} scale={[0.6, 1, 0.45]} />
@@ -2559,11 +3196,13 @@ const Building = forwardRef(function Building(_, ref) {
             <mesh geometry={geo.beacon} material={lampGlowMat} position={[0.5, 1.03, 0]} scale={[0.3, 0.08, 0.3]} />
             <mesh geometry={geo.lightPool} material={lightPoolMat} rotation={[-Math.PI / 2, 0, 0]} position={[-0.4, 0.04, 0]} />
             <mesh geometry={geo.lightPool} material={lightPoolMat} rotation={[-Math.PI / 2, 0, 0]} position={[0.5, 0.04, 0]} />
+            {/* a statement plant in the back corner of every unit */}
+            <group position={[-0.92, 0.03, -1.1]}>{renderTallPlant(k)}</group>
 
             {r.kind === 0 && (
               <>
                 <mesh geometry={geo.bed} material={fenceMat} position={[0.05, 0, -0.25]} />
-                <mesh geometry={geo.duvet} material={figMats[1]} position={[0.05, 0, -0.25]} />
+                <mesh geometry={geo.duvet} material={signatureMats[0]} position={[0.05, 0, -0.25]} />
                 <mesh geometry={geo.pillow} material={figMats[3]} position={[-0.15, 0.21, -0.85]} />
                 <mesh geometry={geo.pillow} material={figMats[3]} position={[0.25, 0.21, -0.85]} />
                 <mesh geometry={geo.headboard} material={woodMat} position={[0.05, 0.17, -0.95]} />
@@ -2579,9 +3218,9 @@ const Building = forwardRef(function Building(_, ref) {
             )}
             {r.kind === 1 && (
               <>
-                <mesh geometry={geo.sofaSeat} material={figMats[0]} position={[0, 0, -0.55]} />
-                <mesh geometry={geo.sofaBack} material={figMats[0]} position={[0, 0.22, -0.77]} />
-                <mesh geometry={geo.sofaSeat} material={figMats[0]} position={[0.66, 0, -0.3]} rotation={[0, Math.PI / 2, 0]} scale={[0.5, 1, 1]} />
+                <mesh geometry={geo.sofaSeat} material={signatureMats[1]} position={[0, 0, -0.55]} />
+                <mesh geometry={geo.sofaBack} material={signatureMats[1]} position={[0, 0.22, -0.77]} />
+                <mesh geometry={geo.sofaSeat} material={signatureMats[1]} position={[0.66, 0, -0.3]} rotation={[0, Math.PI / 2, 0]} scale={[0.5, 1, 1]} />
                 <mesh geometry={geo.tableTop} material={benchMat} position={[0, 0.05, 0.12]} scale={1.5} />
                 <mesh geometry={geo.stool} material={figMats[2]} position={[-0.78, 0.1, 0.18]} scale={1.2} />
                 {/* media wall on the far partition */}
@@ -2589,23 +3228,40 @@ const Building = forwardRef(function Building(_, ref) {
                 <mesh geometry={geo.headboard} material={carCabinMat} position={[0.15, 0.52, 1.45]} scale={[0.85, 1.3, 1]} />
                 <mesh geometry={geo.pillow} material={rugMats[(r.rug + 1) % 4]} position={[-0.3, 0.2, -0.6]} scale={0.8} />
                 <mesh geometry={geo.pillow} material={figMats[3]} position={[0.32, 0.2, -0.6]} scale={0.8} />
+                {/* sculptural pendant + styled coffee table */}
+                <group position={[0, 0, 0.12]}>{renderPendant(0.4)}</group>
+                <mesh geometry={geo.trayDeco} material={benchMat} position={[0, 0.135, 0.12]} />
+                <mesh geometry={geo.stool} material={signatureMats[1]} position={[0.04, 0.16, 0.16]} scale={[0.55, 0.1, 0.4]} rotation={[0, 0.3, 0]} />
+                <mesh geometry={geo.globe} material={mirrorMat} position={[-0.07, 0.16, 0.08]} scale={0.55} />
               </>
             )}
             {r.kind === 2 && (
               <>
-                <mesh geometry={geo.hedge} material={woodMat} position={[0.1, 0, -0.8]} scale={[1.25, 1, 0.9]} />
+                <mesh geometry={geo.hedge} material={signatureMats[2]} position={[0.1, 0, -0.8]} scale={[1.25, 1, 0.9]} />
                 <mesh geometry={geo.cable} material={carCabinMat} position={[-0.15, 0.92, -0.8]} />
                 <mesh geometry={geo.cable} material={carCabinMat} position={[0.4, 0.92, -0.8]} />
                 <mesh geometry={geo.beacon} material={lampGlowMat} position={[-0.15, 0.78, -0.8]} scale={0.5} />
                 <mesh geometry={geo.beacon} material={lampGlowMat} position={[0.4, 0.78, -0.8]} scale={0.5} />
                 <mesh geometry={geo.dinTable} material={benchMat} position={[0, 0, 0.35]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.32, 0.08, 0.72]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[0.3, 0.08, 0.72]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.32, 0.08, 0.0]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[0.3, 0.08, 0.0]} />
+                <mesh geometry={geo.stool} material={signatureMats[2]} position={[-0.32, 0.08, 0.72]} />
+                <mesh geometry={geo.stool} material={signatureMats[2]} position={[0.3, 0.08, 0.72]} />
+                <mesh geometry={geo.stool} material={signatureMats[2]} position={[-0.32, 0.08, 0.0]} />
+                <mesh geometry={geo.stool} material={signatureMats[2]} position={[0.3, 0.08, 0.0]} />
                 <mesh geometry={geo.beacon} material={benchMat} position={[0, 0.3, 0.35]} scale={[0.35, 0.2, 0.35]} />
                 <mesh geometry={geo.stool} material={fenceMat} position={[-0.15, 0.39, -0.8]} scale={[0.5, 0.3, 0.4]} />
                 <mesh geometry={geo.stool} material={figMats[1]} position={[0.35, 0.39, -0.8]} scale={[0.35, 0.25, 0.35]} />
+                {/* pendant cluster over the table */}
+                <group position={[-0.16, 0, 0.35]}>{renderPendant(0.42)}</group>
+                <group position={[0.18, 0, 0.35]}>{renderPendant(0.5)}</group>
+                {/* kitchen — charcoal base, honed-marble top, brass, upper cabinet */}
+                <group position={[0, 0, 1.28]}>
+                  <mesh geometry={geo.credenza} material={woodMat} position={[0, 0.025, 0]} scale={[1.05, 1.4, 1.0]} />
+                  <mesh geometry={geo.counterTop} material={marbleTopMat} position={[0, 0, 0]} scale={[1.05, 1, 0.95]} />
+                  <mesh geometry={geo.shelfBack} material={woodMat} position={[0, 0.88, 0.12]} scale={[1.2, 0.4, 1]} />
+                  <mesh geometry={geo.bottle} material={mirrorMat} position={[-0.3, 0.34, 0]} />
+                  <mesh geometry={geo.bottle} material={signatureMats[2]} position={[-0.22, 0.34, -0.03]} />
+                  <mesh geometry={geo.globe} material={benchMat} position={[0.3, 0.345, 0]} scale={0.7} />
+                </group>
               </>
             )}
 
@@ -2617,7 +3273,7 @@ const Building = forwardRef(function Building(_, ref) {
                 <mesh geometry={geo.stool} material={figMats[2]} position={[-0.7, 0.32, -0.6]} scale={0.5} />
                 <mesh geometry={geo.stool} material={fenceMat} position={[0.55, 0.12, -0.7]} scale={1.4} />
                 <mesh geometry={geo.stool} material={figMats[1]} position={[0.55, 0.32, -0.7]} scale={0.5} />
-                <mesh geometry={geo.headboard} material={woodMat} position={[0.1, 0.3, 1.42]} scale={[1.6, 1.8, 1]} />
+                <mesh geometry={geo.headboard} material={signatureMats[3]} position={[0.1, 0.3, 1.42]} scale={[1.6, 1.8, 1]} />
               </>
             )}
             {r.kind === 4 && (
@@ -2625,26 +3281,31 @@ const Building = forwardRef(function Building(_, ref) {
                 {/* workspace: two desk rows, task chairs, monitors */}
                 <mesh geometry={geo.dinTable} material={woodMat} position={[-0.45, 0, -0.5]} scale={[1.1, 1, 1]} />
                 <mesh geometry={geo.dinTable} material={woodMat} position={[-0.45, 0, 0.6]} scale={[1.1, 1, 1]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.85, 0.08, -0.85]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.1, 0.08, -0.85]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.85, 0.08, 0.95]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.1, 0.08, 0.95]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.6, 0.31, -0.5]} scale={[0.9, 0.5, 0.2]} />
-                <mesh geometry={geo.stool} material={figMats[0]} position={[-0.15, 0.31, 0.6]} scale={[0.9, 0.5, 0.2]} />
+                <mesh geometry={geo.stool} material={signatureMats[4]} position={[-0.85, 0.08, -0.85]} />
+                <mesh geometry={geo.stool} material={signatureMats[4]} position={[-0.1, 0.08, -0.85]} />
+                <mesh geometry={geo.stool} material={signatureMats[4]} position={[-0.85, 0.08, 0.95]} />
+                <mesh geometry={geo.stool} material={signatureMats[4]} position={[-0.1, 0.08, 0.95]} />
+                <mesh geometry={geo.stool} material={signatureMats[4]} position={[-0.6, 0.31, -0.5]} scale={[0.9, 0.5, 0.2]} />
+                <mesh geometry={geo.stool} material={signatureMats[4]} position={[-0.15, 0.31, 0.6]} scale={[0.9, 0.5, 0.2]} />
+                {/* library wall against the party partition */}
+                <group position={[0.45, 0, 1.4]} rotation={[0, Math.PI, 0]}>{renderBookcase()}</group>
               </>
             )}
             {r.kind === 5 && (
               <>
                 {/* residents' club: facing sofas, long table, double greenery */}
-                <mesh geometry={geo.sofaSeat} material={figMats[2]} position={[0, 0, -0.62]} />
-                <mesh geometry={geo.sofaBack} material={figMats[2]} position={[0, 0.22, -0.84]} />
-                <mesh geometry={geo.sofaSeat} material={figMats[2]} position={[0, 0, 0.62]} rotation={[0, Math.PI, 0]} />
-                <mesh geometry={geo.sofaBack} material={figMats[2]} position={[0, 0.22, 0.84]} />
+                <mesh geometry={geo.sofaSeat} material={signatureMats[5]} position={[0, 0, -0.62]} />
+                <mesh geometry={geo.sofaBack} material={signatureMats[5]} position={[0, 0.22, -0.84]} />
+                <mesh geometry={geo.sofaSeat} material={signatureMats[5]} position={[0, 0, 0.62]} rotation={[0, Math.PI, 0]} />
+                <mesh geometry={geo.sofaBack} material={signatureMats[5]} position={[0, 0.22, 0.84]} />
                 <mesh geometry={geo.dinTable} material={benchMat} position={[0, 0, 0]} scale={[0.9, 0.7, 0.8]} />
-                <group position={[-0.95, 0.03, -1.1]}>
+                <group position={[0.92, 0.03, -1.1]}>
                   <mesh geometry={geo.pot} material={rugMats[3]} scale={1.3} />
                   <mesh geometry={blobGeos[2]} material={gardenMats.foliage[0]} position={[0, 0.24, 0]} scale={[0.12, 0.17, 0.12]} />
                 </group>
+                {/* library wall + sculptural pendant over the table */}
+                <group position={[0.55, 0, 1.4]} rotation={[0, Math.PI, 0]}>{renderBookcase()}</group>
+                <group position={[0, 0, 0]}>{renderPendant(0.5)}</group>
               </>
             )}
 
@@ -2691,46 +3352,95 @@ const Building = forwardRef(function Building(_, ref) {
         {/* parapet balustrade — nobody walks off this roof */}
         <mesh geometry={geo.ring} material={balMats[FLOOR_COUNT - 1]} position={[0, SLAB_T + RAIL_H, 0]} />
         <mesh geometry={geo.ring} material={railMats[FLOOR_COUNT - 1]} position={[0, SLAB_T + RAIL_H + 0.05, 0]} scale={[1, 0.12, 1]} />
-        {/* ROOF DECK — the payoff the section ride ends on:
-            timber decking, plunge pool, bar, pergola dining, planted edge */}
-        <mesh geometry={geo.floorPanel} material={woodFloorMat} position={[0, SLAB_T + 0.005, 0]} scale={[1.85, 1, 0.95]} rotation={[0, Math.PI / 2, 0]} />
+        {/* ROOF DECK — the payoff the ride ends on: a luxury sky garden of
+            timber + travertine, an infinity pool, a sunken fire-lounge, a bar,
+            a pergola dining room, planting and festoon lighting */}
+        <mesh geometry={geo.floorPanel} material={woodFloorMat} position={[0, SLAB_T + 0.004, 0]} scale={[1.85, 1, 0.95]} rotation={[0, Math.PI / 2, 0]} />
+        {/* travertine lounge platform inset in the timber deck */}
+        <mesh geometry={geo.floorPanel} material={stoneFloorMat} position={[-0.55, SLAB_T + 0.008, -0.55]} scale={[0.42, 1, 0.62]} rotation={[0, Math.PI / 2, 0]} />
 
-        {/* plunge pool with glassy water */}
-        <mesh geometry={geo.poolBorder} material={fenceMat} position={[1.25, SLAB_T + 0.05, -1.0]} scale={[0.8, 1, 0.8]} />
-        <mesh geometry={geo.poolWater} material={poolMat} rotation={[-Math.PI / 2, 0, 0]} position={[1.25, SLAB_T + 0.1, -1.0]} scale={0.8} />
-        <mesh geometry={geo.lounger} material={figMats[3]} position={[0.45, SLAB_T + 0.04, -1.45]} rotation={[0, 1.5, 0]} />
-        <mesh geometry={geo.lounger} material={figMats[1]} position={[0.45, SLAB_T + 0.04, -0.95]} rotation={[0, 1.65, 0]} />
-
-        {/* bar counter with stools */}
-        <mesh geometry={geo.credenza} material={woodMat} position={[-1.55, SLAB_T + 0.03, -1.1]} rotation={[0, 0.9, 0]} scale={[1.3, 1.5, 1.2]} />
-        <mesh geometry={geo.stool} material={figMats[0]} position={[-1.15, SLAB_T + 0.08, -0.85]} />
-        <mesh geometry={geo.stool} material={figMats[0]} position={[-1.35, SLAB_T + 0.08, -0.6]} />
-
-        {/* dining under the pergola */}
-        <mesh geometry={geo.dinTable} material={benchMat} position={[0.2, SLAB_T, 1.15]} scale={[0.85, 1, 0.85]} />
-        <mesh geometry={geo.stool} material={figMats[2]} position={[-0.1, SLAB_T + 0.08, 1.45]} />
-        <mesh geometry={geo.stool} material={figMats[2]} position={[0.5, SLAB_T + 0.08, 1.45]} />
-        <mesh geometry={geo.stool} material={figMats[2]} position={[-0.1, SLAB_T + 0.08, 0.85]} />
-        <group position={[-0.95, SLAB_T, 1.15]}>
-          <mesh geometry={geo.post} material={benchMat} scale={[0.5, 0.62, 0.5]} position={[0, 0.28, 0]} />
-          <mesh geometry={geo.parasolTop} material={benchMat} position={[0, 0.6, 0]} />
+        {/* INFINITY POOL along the east edge — coping, sun loungers, parasol */}
+        <mesh geometry={geo.poolBorder} material={stoneFloorMat} position={[1.55, SLAB_T + 0.04, -0.15]} scale={[0.62, 1, 1.5]} />
+        <mesh geometry={geo.poolWater} material={poolMat} rotation={[-Math.PI / 2, 0, 0]} position={[1.55, SLAB_T + 0.09, -0.15]} scale={[0.62, 1, 1.5]} />
+        <mesh geometry={geo.lounger} material={figMats[3]} position={[2.18, SLAB_T + 0.04, -0.55]} rotation={[0, -Math.PI / 2, 0]} scale={1.1} />
+        <mesh geometry={geo.lounger} material={figMats[3]} position={[2.18, SLAB_T + 0.04, 0.2]} rotation={[0, -Math.PI / 2, 0]} scale={1.1} />
+        <group position={[2.25, SLAB_T, 0.95]}>
+          <mesh geometry={geo.post} material={benchMat} scale={[0.4, 0.62, 0.4]} position={[0, 0.27, 0]} />
+          <mesh geometry={geo.parasolTop} material={figMats[3]} position={[0, 0.62, 0]} scale={1.15} />
         </group>
 
-        {/* planted edge — potted greens along the parapet */}
-        {[[-1.9, 0.9], [-1.0, 1.85], [1.6, 1.4], [2.0, 0.2], [-2.1, -0.3]].map(([px, pz], i) => (
-          <group key={`rp${i}`} position={[px, SLAB_T, pz]}>
-            <mesh geometry={geo.pot} material={rugMats[i % 2 === 0 ? 0 : 3]} scale={1.4} />
-            <mesh geometry={blobGeos[i % 3]} material={gardenMats.foliage[i % 4]} position={[0, 0.26, 0]} scale={[0.13, 0.18, 0.13]} />
+        {/* SUNKEN LOUNGE — facing sofas around a glowing fire feature */}
+        <mesh geometry={geo.sofaSeat} material={figMats[2]} position={[-0.55, SLAB_T, -1.0]} scale={1.0} />
+        <mesh geometry={geo.sofaBack} material={figMats[2]} position={[-0.55, SLAB_T + 0.22, -1.21]} scale={1.0} />
+        <mesh geometry={geo.sofaSeat} material={figMats[2]} position={[-0.55, SLAB_T, -0.1]} rotation={[0, Math.PI, 0]} scale={1.0} />
+        <mesh geometry={geo.sofaBack} material={figMats[2]} position={[-0.55, SLAB_T + 0.22, 0.11]} scale={1.0} />
+        <mesh geometry={geo.pillow} material={signatureMats[1]} position={[-0.92, SLAB_T + 0.2, -1.0]} scale={0.8} />
+        <mesh geometry={geo.pillow} material={signatureMats[5]} position={[-0.18, SLAB_T + 0.2, -0.1]} scale={0.8} />
+        {/* fire pit — travertine basin with a warm flame */}
+        <mesh geometry={geo.tableTop} material={stoneFloorMat} position={[-0.55, SLAB_T + 0.02, -0.55]} scale={[1.7, 0.55, 1.7]} />
+        <mesh geometry={geo.lightDot} material={lampGlowMat} position={[-0.55, SLAB_T + 0.12, -0.55]} scale={1.7} />
+
+        {/* BAR — marble counter, back-bar bottles, stools */}
+        <group position={[-2.0, SLAB_T, 0.5]} rotation={[0, 0.5, 0]}>
+          <mesh geometry={geo.credenza} material={woodMat} position={[0, 0.03, 0]} scale={[1.5, 1.6, 1.0]} />
+          <mesh geometry={geo.counterTop} material={marbleTopMat} position={[0, 0, 0]} scale={[1.1, 1, 0.7]} />
+          <mesh geometry={geo.bottle} material={signatureMats[3]} position={[-0.28, 0.34, -0.06]} />
+          <mesh geometry={geo.bottle} material={mirrorMat} position={[-0.18, 0.34, -0.06]} />
+          <mesh geometry={geo.bottle} material={signatureMats[1]} position={[-0.08, 0.34, -0.06]} />
+          <mesh geometry={geo.stool} material={figMats[0]} position={[0.05, 0.08, 0.42]} />
+          <mesh geometry={geo.stool} material={figMats[0]} position={[-0.45, 0.08, 0.42]} />
+        </group>
+
+        {/* PERGOLA DINING — a slatted timber pergola over a long table */}
+        <group position={[0.15, SLAB_T, 1.45]}>
+          {[[-0.95, -0.42], [0.95, -0.42], [-0.95, 0.42], [0.95, 0.42]].map(([px, pz], i) => (
+            <mesh key={`pp${i}`} geometry={geo.post} material={woodMat} position={[px, 0.46, pz]} scale={[0.55, 1.05, 0.55]} />
+          ))}
+          {Array.from({ length: 8 }, (_, i) => (
+            <mesh key={`sl${i}`} geometry={geo.cable} material={woodMat} position={[-0.9 + i * 0.26, 0.94, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.2, 3.6, 1.2]} />
+          ))}
+          <mesh geometry={geo.dinTable} material={woodMat} position={[0, 0, 0]} scale={[1.15, 1, 0.7]} />
+          {[-0.5, 0, 0.5].map((x, i) => (
+            <mesh key={`dca${i}`} geometry={geo.stool} material={figMats[2]} position={[x, 0.08, -0.46]} />
+          ))}
+          {[-0.5, 0, 0.5].map((x, i) => (
+            <mesh key={`dcb${i}`} geometry={geo.stool} material={figMats[2]} position={[x, 0.08, 0.46]} />
+          ))}
+        </group>
+
+        {/* clipped planters + flowering pots + a pair of feature trees */}
+        {[[-2.25, 1.4], [-1.3, 2.0], [1.3, 1.9], [2.25, 1.3], [-2.3, -1.2], [0.1, -1.55]].map(([px, pz], i) => (
+          <group key={`rpl${i}`} position={[px, SLAB_T, pz]}>
+            <mesh geometry={geo.hedge} material={gardenMats.hedge} scale={[0.8, 0.7, 0.5]} />
+            <mesh geometry={geo.globe} material={i % 2 ? gardenMats.foliage[1] : flowerMats[i % 4]} position={[0, 0.3, 0]} scale={1.25} />
+          </group>
+        ))}
+        {[[-2.35, 0.4], [2.3, -1.15]].map(([px, pz], i) => (
+          <group key={`rtr${i}`} position={[px, SLAB_T, pz]}>
+            <mesh geometry={geo.trunk} material={gardenMats.trunk} scale={[0.55, 0.95, 0.55]} position={[0, 0.45, 0]} />
+            <mesh geometry={blobGeos[i % 3]} material={gardenMats.foliage[2]} position={[0, 1.0, 0]} scale={0.52} />
+            <mesh geometry={blobGeos[(i + 1) % 3]} material={gardenMats.foliage[3]} position={[0.18, 0.88, 0.1]} scale={0.34} />
           </group>
         ))}
 
+        {/* festoon string lights criss-crossing the deck — warm glow at dusk */}
+        {Array.from({ length: 22 }, (_, i) => {
+          const t = i / 21
+          return (
+            <mesh
+              key={`fl${i}`}
+              geometry={geo.lightDot}
+              material={lampGlowMat}
+              position={[-2.3 + t * 4.6, SLAB_T + 0.95 - Math.sin(t * Math.PI) * 0.22, i % 2 ? -1.3 : 1.3]}
+              scale={0.7}
+            />
+          )
+        })}
+
         {/* residents enjoying the deck */}
-        <group position={[1.0, SLAB_T, -0.35]} rotation={[0, 2.6, 0]} scale={0.9}>
-          {renderFigure(2, 1)}
-        </group>
-        <group position={[-1.0, SLAB_T, -0.75]} rotation={[0, -0.7, 0]} scale={0.9}>
-          {renderFigure(1, 3)}
-        </group>
+        <group position={[0.95, SLAB_T, -0.55]} rotation={[0, 2.4, 0]} scale={0.9}>{renderFigure(2, 1)}</group>
+        <group position={[-1.35, SLAB_T, -0.4]} rotation={[0, 0.8, 0]} scale={0.9}>{renderFigure(0, 3)}</group>
+        <group position={[1.85, SLAB_T, 0.85]} rotation={[0, -1.3, 0]} scale={0.9}>{renderFigure(1, 2)}</group>
         {/* parapet crown light — glows after dusk */}
         <mesh geometry={geo.ring} material={crownMat} position={[0, SLAB_T + 0.1, 0]} scale={[1.01, 0.18, 1.01]} />
         <mesh ref={beaconRef} geometry={geo.beacon} material={beaconMat} position={[0, SLAB_T + 1.2, 0]} />
