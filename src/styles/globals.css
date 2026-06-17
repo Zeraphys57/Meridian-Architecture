@@ -174,59 +174,40 @@ body[data-cursor='hover'] .cursor-cross {
 [data-theme='dark'] .hairline,
 [data-theme='warm'] .hairline { background: var(--line-light); }
 
-/* drawn SVG paths start hidden until GSAP measures them */
-.draw-svg path,
-.draw-svg line,
-.draw-svg circle,
-.draw-svg rect,
-.draw-svg polyline {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-
-/* Act VII — each drawing sits on a real architect's sheet: a drafting panel
-   with corner registration ticks and a title block, lifting the drawings off
-   the schematic tower behind them */
-.drawing-sheet {
+/* Act VII — THE METHOD. The right column of each phase is an editorial
+   typographic plate: a small tag, a hero verb with a sand accent, a hairline
+   rule, then one distilled supporting line. The type carries the idea — no
+   drawings. */
+.method-editorial {
   position: relative;
-  border: 1px solid var(--line);
-  background: rgba(248, 246, 240, 0.86);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  padding: 26px 28px 14px;
-  box-shadow: 0 14px 40px -28px rgba(28, 27, 25, 0.45);
 }
-.sheet-corner {
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  border: 0 solid var(--sand-deep);
-  opacity: 0.65;
+.me-index {
+  display: block;
+  color: var(--sand-deep);
+  margin-bottom: 22px;
 }
-.sheet-corner.tl { top: 7px; left: 7px; border-top-width: 1px; border-left-width: 1px; }
-.sheet-corner.tr { top: 7px; right: 7px; border-top-width: 1px; border-right-width: 1px; }
-.sheet-corner.bl { bottom: 7px; left: 7px; border-bottom-width: 1px; border-left-width: 1px; }
-.sheet-corner.br { bottom: 7px; right: 7px; border-bottom-width: 1px; border-right-width: 1px; }
-.drawing-titleblock {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 11px;
-  border-top: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
+.me-word {
+  font-size: clamp(64px, 9.5vw, 156px);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
   text-transform: uppercase;
 }
-.drawing-titleblock .tb-no { color: var(--sand-deep); }
-.drawing-titleblock .tb-mid { opacity: 0.55; }
-/* confident, inked linework on the sheets */
-.drawing-sheet .draw-svg path,
-.drawing-sheet .draw-svg circle { stroke-width: 1.3; }
+.me-word .me-dot { color: var(--sand); }
+.me-rule {
+  display: block;
+  width: 64px;
+  height: 1px;
+  background: var(--sand-deep);
+  margin: 30px 0 22px;
+}
+.me-line {
+  font-size: clamp(18px, 1.7vw, 26px);
+  line-height: 1.45;
+  font-weight: 300;
+  opacity: 0.62;
+  max-width: 440px;
+}
 
 /* scroll hint line */
 .scroll-hint-line {
