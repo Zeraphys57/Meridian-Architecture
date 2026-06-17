@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NarrativeProvider } from './narrative/NarrativeProvider'
 import Scene from './scene/Scene'
 import Loader from './components/Loader'
@@ -23,6 +23,11 @@ export default function App() {
   const mainRef = useRef(null)
   const [loaded, setLoaded] = useState(DEBUG_AT != null)
   const onLoaderDone = useCallback(() => setLoaded(true), [])
+
+  useEffect(() => {
+    document.body.style.overflow = loaded ? '' : 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [loaded])
 
   return (
     <NarrativeProvider mainRef={mainRef} loaded={loaded}>
