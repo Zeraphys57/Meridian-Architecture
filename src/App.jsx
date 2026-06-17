@@ -25,8 +25,24 @@ export default function App() {
   const onLoaderDone = useCallback(() => setLoaded(true), [])
 
   useEffect(() => {
-    document.body.style.overflow = loaded ? '' : 'hidden'
-    return () => { document.body.style.overflow = '' }
+    if (!loaded) {
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.width = '100%'
+      document.body.style.top = '0'
+    } else {
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.top = ''
+      window.scrollTo(0, 0)
+    }
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.top = ''
+    }
   }, [loaded])
 
   return (

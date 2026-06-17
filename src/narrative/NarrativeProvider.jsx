@@ -16,7 +16,7 @@ export function NarrativeProvider({ children, mainRef, loaded }) {
   const reducedMotion = useReducedMotion()
   const isTouch = useIsTouch()
   const isMobile = useIsMobile()
-  useLenis(!isTouch)
+  useLenis(!isTouch && loaded)
 
   const progressRef = useRef(0)
   const [act, setAct] = useState(1)
