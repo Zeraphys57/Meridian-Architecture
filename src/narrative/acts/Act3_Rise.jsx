@@ -15,7 +15,6 @@ export default function Act3_Rise() {
   const heightRef = useRef()
   const floorsRef = useRef()
   const statusRef = useRef()
-  const barRef = useRef()
   const nameRef = useRef()
   const { progressRef } = useNarrative()
 
@@ -43,7 +42,6 @@ export default function Act3_Rise() {
       }
       if (heightRef.current)
         heightRef.current.textContent = `HEIGHT ${(l * MAX_HEIGHT).toFixed(1)}m / ${MAX_HEIGHT.toFixed(1)}m`
-      if (barRef.current) barRef.current.style.transform = `scaleX(${l})`
       const complete = l >= 0.999
       if (complete !== lastComplete && statusRef.current) {
         lastComplete = complete
@@ -94,10 +92,6 @@ export default function Act3_Rise() {
           <div ref={statusRef}>STATUS: RISING</div>
         </div>
 
-        {/* bottom — build progress line */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[40vw] max-w-[480px] overflow-hidden" style={{ height: 1, background: 'var(--line-light)' }}>
-          <div ref={barRef} className="h-full w-full" style={{ background: 'var(--sand)', transform: 'scaleX(0)', transformOrigin: 'left center' }} />
-        </div>
       </div>
     </section>
   )
