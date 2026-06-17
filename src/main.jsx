@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+
+history.scrollRestoration = 'manual'
 // Self-hosted fonts — bundled by Vite, no runtime dependency on the Google CDN.
 import '@fontsource-variable/space-grotesk'
 import '@fontsource-variable/manrope'
